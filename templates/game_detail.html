@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>
+比數：{{ game.team_score }} ：{{ game.opponent_score }}<br>
+<span style="font-size:1.2em;">元智大學 vs {{ game.opponent }}</span>
+</h2>
+<hr>
+<h2>{{ game.date }} 的詳細打擊成績</h2>
+<table border="1" cellpadding="4">
+    <tr>
+        <th>棒次</th>
+        <th>球員</th>
+        {% for inning in range(1, max_inning+1) %}
+            <th>{{ inning }}</th>
+        {% endfor %}
+        <th>打數</th>
+        <th>安打</th>
+        <th>全壘打</th>
+        <th>打點</th>
+        <th>得分</th>
+        <th>打擊率</th>
+    </tr>
+    {# 取得所有有出場的棒次(order)後分棒次分群 #}
+    {% set orders = stats_table | map(attribute='order') | reject('equalto', "") | list | unique | sort %}
+    {% for order in orders %}
+        {% set group = stats_table | selectattr('order', 'equalto', order) | list %}
+        {% for row in group %}
+        <tr>
+            <td>{% if loop.index0 == 0 %}{{ order + 1 }}{% endif %}</td>
+            <td>{{ row.player.name }}<i>
+                {% if row.note %}, {{ row.note }}{% endif %}
+                {% if row.position %}, {{ row.position }}{% endif %}
+            </i></td>
+            {% for r in row.results %}
+                <td>{{ r }}</td>
+            {% endfor %}
+            <td>{{ row.ab }}</td>
+            <td>{{ row.hit }}</td>
+            <td>{{ row.hr }}</td>
+            <td>{{ row.rbi }}</td>
+            <td>{{ row.run if row.run is defined else 0 }}</td>
+            <td>
+                {% if row.ab %}
+                    {{ "%.3f" | format(row.hit / row.ab) }}
+                {% else %}
+                    0.000
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    {% endfor %}
+    <tr style="background: #fff2d3;">
+        <td>Total</td>
+        <td></td>
+        {% for t in total.inning_results %}
+            <td>{{ t }}</td>
+        {% endfor %}
+        <td>{{ total.ab }}</td>
+        <td>{{ total.hit }}</td>
+        <td>{{ total.hr }}</td>
+        <td>{{ total.rbi }}</td>
+        <td>{{ total.run if total.run is defined else 0 }}</td>
+        <td>-</td>
+    </tr>
+</table>
+<a href="{{ url_for('games') }}">返回歷史比賽</a>
+{% endblock %}

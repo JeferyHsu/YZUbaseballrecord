@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>球員列表</h2>
+<a href="{{ url_for('add_player') }}">新增球員</a>
+<table border="1">
+    <tr>
+        <th>姓名</th>
+        <th>背號</th>
+        <th>守備位置</th>
+        <th>操作</th>
+    </tr>
+    {% for player in players %}
+    <tr>
+        <td>{{ player.name }}</td>
+        <td>{{ player.number }}</td>
+        <td>{{ player.position }}</td>
+        <td><a href="{{ url_for('delete_player', id=player.id) }}">刪除</a></td>
+    </tr>
+    {% endfor %}
+</table>
+<a href="{{ url_for('index') }}">回首頁</a>
+{% endblock %}

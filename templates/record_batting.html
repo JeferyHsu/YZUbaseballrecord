@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>紀錄打擊數據 - 球員：{{ player.name }}</h2>
+<form method="post">
+    打數: <input type="number" name="at_bats" value="{{ stat.at_bats or 0 }}" min="0"><br>
+    安打: <input type="number" name="hits" value="{{ stat.hits or 0 }}" min="0"><br>
+    打點: <input type="number" name="rbis" value="{{ stat.rbis or 0 }}" min="0"><br>
+    <input type="submit" value="儲存數據">
+</form>
+<div>
+    {% if index > 0 %}
+    <a href="{{ url_for('record_batting', game_id=game_id, index=index-1) }}">上一位</a>
+    {% endif %}
+    ｜ {{ index+1 }} / {{ total }} ｜ 
+    {% if index < total - 1 %}
+    <a href="{{ url_for('record_batting', game_id=game_id, index=index+1) }}">下一位</a>
+    {% endif %}
+</div>
+<a href="{{ url_for('index') }}">完成並返回首頁</a>
+{% endblock %}

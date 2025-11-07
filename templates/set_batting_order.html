@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>設定比賽 {{ game.date }} VS {{ game.opponent }} 的棒次順序</h2>
+<form method="post">
+    <table border="1">
+        <tr><th>球員</th><th>打擊棒次(整數)</th></tr>
+        {% for player in players %}
+        <tr>
+            <td>{{ player.name }}</td>
+            <td><input type="number" name="order_{{ player.id }}" min="1" max="99"></td>
+        </tr>
+        {% endfor %}
+    </table>
+    <input type="submit" value="儲存棒次並開始紀錄">
+</form>
+<a href="{{ url_for('index') }}">回首頁</a>
+{% endblock %}

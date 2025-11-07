@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>新增球員</h2>
+<form method="post">
+    姓名：<input type="text" name="name"><br>
+    背號：<input type="number" name="number"><br>
+    守備位置：<input type="text" name="position"><br>
+    <input type="submit" value="送出">
+</form>
+<a href="{{ url_for('index') }}">回首頁</a>
+{% endblock %}

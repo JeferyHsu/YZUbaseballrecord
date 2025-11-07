@@ -1,0 +1,28 @@
+body { font-family: Arial, "微軟正黑體", sans-serif; background: #fafafa; }
+h1 { color: #333; }
+.menu-btn {
+    display: inline-block;
+    margin-right: 12px;
+    padding: 8px 18px;
+    background: #6c63ff;
+    color: white;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: bold;
+}
+.menu-btn:hover{ background: #502cff; color: #ffd700;}
+button {
+    margin: 6px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    border: none;
+    background: #6c63ff;
+    color: white;
+    font-size: 1em;
+    font-weight: bold;
+}
+button:hover {
+    background: #502cff;
+    color: #ffd700;
+}
+table { background: #fff;}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>比賽列表</h2>
+<nav>
+    <a class="menu-btn" href="{{ url_for('players') }}">球員管理</a>
+    <a class="menu-btn" href="{{ url_for('games') }}">歷史比賽</a>
+    <a class="menu-btn" href="{{ url_for('add_game') }}">新增比賽</a>
+</nav>
+<table border="1" cellpadding="6">
+    <tr>
+        <th>日期</th>
+        <th>對手</th>
+        <th>比分</th>
+        <th>功能</th>
+    </tr>
+    {% for g in games %}
+    <tr>
+        <td>{{ g.date }}</td>
+        <td>{{ g.opponent }}</td>
+        <td>
+            {% if g.team_score is not none and g.opponent_score is not none %}
+                {{ g.team_score }} : {{ g.opponent_score }}
+            {% else %}
+                尚未設定
+            {% endif %}
+        </td>
+        <td>
+            <a href="{{ url_for('set_batting_order', game_id=g.id) }}">設定棒次＋開始紀錄</a>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% if games|length == 0 %}
+<p>目前沒有比賽，請新增比賽。</p>
+{% endif %}
+{% endblock %}

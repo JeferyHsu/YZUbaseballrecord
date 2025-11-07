@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>新增比賽</h2>
+<form method="post">
+    日期：<input type="text" name="date"><br>
+    對手：<input type="text" name="opponent"><br>
+    <input type="submit" value="送出">
+</form>
+<a href="{{ url_for('index') }}">回首頁</a>
+{% endblock %}

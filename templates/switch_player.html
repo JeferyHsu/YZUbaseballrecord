@@ -1,0 +1,18 @@
+<form method="post">
+    <input type="hidden" name="order" value="{{ order }}">
+    {% set curr_gbo = batting_orders[order|int] %}
+    <label>被換下球員 (order: {{ order }})：</label>
+    <select name="old_player" required>
+        <option value="{{ curr_gbo.player.id }}">{{ curr_gbo.player.name }}</option>
+    </select>
+    <label>新上場球員：</label>
+    <select name="new_player" required>
+        {% for p in all_players %}
+            <option value="{{ p.id }}">{{ p.name }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">確定換人</button>
+
+    <p>DEBUG: 換人按鈕 order={{ order }}，curr_gbo.player.id={{ curr_gbo.player.id }}, curr_gbo.player.name={{ curr_gbo.player.name }}</p>
+
+</form>
