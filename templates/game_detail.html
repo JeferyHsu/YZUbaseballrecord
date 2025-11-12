@@ -100,6 +100,24 @@
   </tr>
 </table>
 
+<h2>投手每局用球數</h2>
+<table border="1">
+    <tr>
+        <th>投手</th>
+        {% for inn in pitcher_innings %}
+            <th>第{{ inn }}局</th>
+        {% endfor %}
+    </tr>
+    {% for pitcher in pitcher_inning_data %}
+    <tr>
+        <td>{{ pitcher.name }}</td>
+        {% for cnt in pitcher.data %}
+            <td>{{ cnt }}</td>
+        {% endfor %}
+    </tr>
+    {% endfor %}
+</table>
+
 <h2>防守打席紀錄</h2>
 <table border="1" style="border-collapse: collapse;">
     <tr>

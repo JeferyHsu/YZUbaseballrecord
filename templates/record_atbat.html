@@ -26,4 +26,10 @@
 <a href="{{ url_for('undo_atbat', game_id=game_id, order=order, inning=inning) }}">復原上一筆</a>
 <br>
 <a href="{{ url_for('index') }}">完成並返回首頁</a>
+
+<form action="{{ url_for('finish_record', game_id=game_id) }}" method="post">
+    <button type="submit" style="background:#28a745;color:white;font-size:16px;">完成紀錄</button>
+</form>
 {% endblock %}
+
+

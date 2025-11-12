@@ -1,0 +1,10 @@
+<h2>換投手</h2>
+<form method="post">
+    <label>選擇投手：</label>
+    <select name="pitcher_id">
+        {% for p in pitchers %}
+        <option value="{{ p.id }}">{{ p.name }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">確認換投手</button>
+</form>

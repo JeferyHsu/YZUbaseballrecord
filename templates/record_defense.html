@@ -1,16 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>防守紀錄</title>
+</head>
+<body>
 <h2>第 {{ inning }} 局{{ '上' if is_top else '下' }}｜出局數：{{ outs }}</h2>
+
 <form method="post">
-    <label>目前投手：</label>
-    <select name="pitcher_id">
+    <input type="hidden" name="pitcher_id" value="{{ curr_pitcher_id }}">
+    <p>目前投手：<strong>
         {% for p in pitchers %}
-        <option value="{{ p.id }}" {% if p.id==curr_pitcher_id %}selected{% endif %}>{{ p.name }}</option>
+            {% if p.id == curr_pitcher_id %}{{ p.name }}{% endif %}
         {% endfor %}
-    </select>
+    </strong></p>
     <label>打席球員（對方）</label>
     <input name="batter_name" value="{{ last_batter_name }}">
-    <label>好球：</label><input name="strike" type="number" min="0" max="3" value="0">
-    <label>壞球：</label><input name="ball" type="number" min="0" max="4" value="0">
-    <label>本打席投球：</label><input name="pitch_count" type="number" min="1" value="1">
+    <label>好球：</label>
+    <input name="strike" type="number" min="0" max="3" value="0">
+    <label>壞球：</label>
+    <input name="ball" type="number" min="0" max="4" value="0">
+    <label>本打席投球：</label>
+    <input name="pitch_count" type="number" min="1" value="1">
     <label>打席結果：</label>
     <select name="result">
         <option value="三振">三振</option>
@@ -28,42 +39,62 @@
         <option value="全壘">全壘</option>
         <option value="失誤">失誤</option>
     </select>
-    <label>失分：</label><input name="runs" type="number" min="0" value="0">
+    <label>失分：</label>
+    <input name="runs" type="number" min="0" value="0">
     <button type="submit">記錄打席</button>
 </form>
 
-<table border="1">
-    <tr>
-        <th>打席</th><th>投手</th><th>對方打者</th><th>好球</th><th>壞球</th><th>投球數</th><th>結果</th><th>失分</th>
-    </tr>
-{% for record in inning_records %}
-<tr>
-    <td>{{ loop.index }}</td>
-    <td>{{ record.pitcher.name if record.pitcher else '' }}</td>
-    <td>{{ record.batter_name }}</td>
-    <td>{{ record.strike }}</td>
-    <td>{{ record.ball }}</td>
-    <td>{{ record.pitch_count }}</td>
-    <td>{{ record.result }}</td>
-    <td>{{ record.runs }}</td>
-</tr>
-{% endfor %}
+<!-- 換投手按鈕，可以設計為跳轉 switch_pitcher 頁面或直接用下拉 -->
+<form action="{{ url_for('switch_pitcher', game_id=game_id, inning=inning) }}" method="get" style="display:inline;">
+    <button type="submit">換投手</button>
+</form>
 
+<table border="1" style="margin-top:16px;">
+    <tr>
+        <th>打席</th>
+        <th>投手</th>
+        <th>對方打者</th>
+        <th>好球</th>
+        <th>壞球</th>
+        <th>投球數</th>
+        <th>結果</th>
+        <th>失分</th>
+    </tr>
+    {% for record in inning_records %}
+    <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ record.pitcher.name if record.pitcher else '' }}</td>
+        <td>{{ record.batter_name }}</td>
+        <td>{{ record.strike }}</td>
+        <td>{{ record.ball }}</td>
+        <td>{{ record.pitch_count }}</td>
+        <td>{{ record.result }}</td>
+        <td>{{ record.runs }}</td>
+    </tr>
+    {% endfor %}
 </table>
-<p>本投手累計球數：{{ pitcher_pitch_count }}</p>
+
+<p>本投手本局球數：{{ curr_pitcher_inning_pitch_count }}</p>
+<p>本投手全場累計球數：{{ pitcher_pitch_count }}</p>
 <p>本局總球數：{{ total_pitch_this_inning }}</p>
 <p>全場總球數：{{ total_pitch_all }}</p>
 
 {% if outs >= 3 %}
-<p>三出局，自動進入進攻紀錄頁。</p>
-<script>
+    <p style="color:blue;font-weight:bold;">三出局，自動進入進攻紀錄頁。</p>
+    <script>
     setTimeout(function(){
-        window.location = "{{ url_for('record_atbat', game_id=game_id, order=0, inning=inning+1) }}";
+        window.location = "{{ url_for('record_defense', game_id=game_id, inning=inning+1) }}?pitcher_id={{ curr_pitcher_id }}";
     }, 1200)
 </script>
+
 {% endif %}
 
 <form action="{{ url_for('index') }}" style="display:inline;">
-  <button type="submit">返回首頁</button>
+    <button type="submit">返回首頁</button>
 </form>
+</body>
+</html>
 
+<form action="{{ url_for('finish_record', game_id=game_id) }}" method="post">
+    <button type="submit" style="background:#28a745;color:white;font-size:16px;">完成紀錄</button>
+</form>

@@ -87,8 +87,13 @@ def get_current_inning(game_id):
 
 @app.route('/')
 def index():
-    games = Game.query.all()
-    return render_template('index.html', games=games)
+    completed_games = Game.query.filter_by(is_recorded=True).all()
+    uncompleted_games = Game.query.filter_by(is_recorded=False).all()
+    return render_template('index.html',
+        completed_games=completed_games,
+        uncompleted_games=uncompleted_games
+    )
+
 
 @app.route('/add_game', methods=['GET', 'POST'])
 def add_game():
@@ -219,60 +224,67 @@ def record_atbat(game_id, order, inning):
         opponent=game.opponent)
 
 @app.route('/record_defense/<int:game_id>/<int:inning>', methods=['GET', 'POST'])
-@app.route('/record_defense/<int:game_id>/<int:inning>', methods=['GET', 'POST'])
 def record_defense(game_id, inning):
     pitchers = Player.query.all()
     game = Game.query.get_or_404(game_id)
     last_batter_name = ""
 
-    # 預設投手 id
-    curr_pitcher_id = pitchers[0].id if pitchers else None
-
+    curr_pitcher_id = None
+    # 優先用 GET query string 的 pitcher_id、再用 POST
+    curr_pitcher_id = request.args.get('pitcher_id', type=int)
+    print("curr_pitcher_id:", curr_pitcher_id, "request.args:", request.args)
     if request.method == 'POST':
-        pitcher_id = int(request.form['pitcher_id'])
-        # 整理資料
+        curr_pitcher_id = request.form.get('pitcher_id', type=int)
+    if curr_pitcher_id is None and pitchers:
+        if hasattr(game, 'current_pitcher_id') and game.current_pitcher_id:
+            curr_pitcher_id = game.current_pitcher_id
+        else:
+            curr_pitcher_id = pitchers[0].id
+
+    # 紀錄打席
+    if request.method == 'POST':
         batter_name = request.form['batter_name']
         strike = int(request.form['strike'])
         ball = int(request.form['ball'])
         pitch_count = int(request.form['pitch_count'])
         result = request.form['result']
         runs = int(request.form.get('runs', 0))
-        curr_pitcher_id = pitcher_id   # 用最新選到的人
-
         stat = DefenseStat(
             game_id=game_id, inning=inning,
-            pitcher_id=pitcher_id,
-            batter_name=batter_name,
+            pitcher_id=curr_pitcher_id, batter_name=batter_name,
             strike=strike, ball=ball,
             pitch_count=pitch_count, result=result,
             runs=runs
         )
         db.session.add(stat)
+        # 更新對手分數
         game.opponent_score = (game.opponent_score or 0) + runs
+        curr_pitcher_id = request.form.get('pitcher_id', type=int)
+        game.current_pitcher_id = curr_pitcher_id
         db.session.commit()
         last_batter_name = batter_name
 
-    # 這裡只算一次，for 以前
-    if curr_pitcher_id is not None:
+    # 這裡只算一次投手球數
+    pitcher_pitch_count = 0
+    if curr_pitcher_id:
         pitcher_pitch_count = sum(
             r.pitch_count
             for r in DefenseStat.query.filter_by(game_id=game_id).all()
             if r.pitcher_id == curr_pitcher_id
         )
-    else:
-        pitcher_pitch_count = 0
 
-    # 產生局內紀錄資料
     records = DefenseStat.query.filter_by(game_id=game_id, inning=inning).all()
     outs = sum(OUT_RESULTS.get(r.result, 0) for r in records)
-    if outs >= 3:
+    # 三出局跳轉，注意 POST 才切換
+    if outs >= 3 and request.method == 'POST':
         if game.first_attack == 'A':
-            # 先攻隊伍，防守結束進入下一局上半進攻
-            return redirect(url_for('record_atbat', game_id=game_id, order=0, inning=inning+1))
+            # 先攻，防守結束進入下一局上半進攻
+            return redirect(url_for('record_atbat', game_id=game_id, order=0, inning=inning+1,pitcher_id=curr_pitcher_id))
         else:
-            # 先守隊伍，防守結束同局下半進攻
-            return redirect(url_for('record_atbat', game_id=game_id, order=0, inning=inning))
+            # 先守，防守結束同局下半進攻
+            return redirect(url_for('record_atbat', game_id=game_id, order=0, inning=inning,pitcher_id=curr_pitcher_id))
 
+    # 打席資料
     inning_records = []
     for r in records:
         pitcher = Player.query.get(r.pitcher_id) if r.pitcher_id else None
@@ -282,19 +294,28 @@ def record_defense(game_id, inning):
             "strike": r.strike,
             "ball": r.ball,
             "pitch_count": r.pitch_count,
-            "result": r.result
+            "result": r.result,
+            "runs": r.runs
         })
     total_pitch_this_inning = sum(r.pitch_count for r in records)
     total_pitch_all = sum(r.pitch_count for r in DefenseStat.query.filter_by(game_id=game_id).all())
-    return render_template('record_defense.html', game_id=game_id, inning=inning,
-                          pitchers=pitchers, curr_pitcher_id=curr_pitcher_id,
-                          last_batter_name=last_batter_name,
-                          inning_records=inning_records,
-                          is_top=(game.first_attack == 'D'),
-                          pitcher_pitch_count=pitcher_pitch_count,
-                          total_pitch_this_inning=total_pitch_this_inning,
-                          total_pitch_all=total_pitch_all,
-                          outs=outs)
+    curr_pitcher_inning_pitch_count = sum(
+    r.pitch_count
+    for r in DefenseStat.query.filter_by(game_id=game_id, inning=inning, pitcher_id=curr_pitcher_id).all()
+    )   
+
+    return render_template('record_defense.html',
+        game_id=game_id, inning=inning,
+        pitchers=pitchers, curr_pitcher_id=curr_pitcher_id,
+        last_batter_name=last_batter_name,
+        inning_records=inning_records,
+        is_top=(game.first_attack == 'D'),
+        pitcher_pitch_count=pitcher_pitch_count,
+        curr_pitcher_inning_pitch_count=curr_pitcher_inning_pitch_count,
+        total_pitch_this_inning=total_pitch_this_inning,
+        total_pitch_all=total_pitch_all,
+        outs=outs
+    )
 
 @app.route('/choose_starting_pitcher/<int:game_id>', methods=['GET', 'POST'])
 def choose_starting_pitcher(game_id):
@@ -351,6 +372,16 @@ def switch_player(game_id):
     return render_template('switch_player.html', batting_orders=batting_orders,
                            all_players=all_players, game_id=game_id, order=order)
 
+@app.route('/switch_pitcher/<int:game_id>/<int:inning>', methods=['GET', 'POST'])
+def switch_pitcher(game_id, inning):
+    pitchers = Player.query.all()
+    game = Game.query.get_or_404(game_id)
+    if request.method == 'POST':
+        new_pitcher_id = int(request.form['pitcher_id'])
+        # 換人後直接redirect回防守頁，帶新投手
+        return redirect(url_for('record_defense', game_id=game_id, inning=inning, pitcher_id=new_pitcher_id))
+    return render_template('switch_pitcher.html', pitchers=pitchers, game_id=game_id, inning=inning)
+
 def get_stats_table(game_id):
     atbats = AtBatStat.query.filter_by(game_id=game_id).all()
     innings = sorted(set([a.inning for a in atbats]))
@@ -388,7 +419,8 @@ def get_stats_table(game_id):
 @app.route('/game_detail/<int:game_id>')
 def game_detail(game_id):
     game = Game.query.get_or_404(game_id)
-    stats_table, max_inning, total = get_stats_table(game_id)       # 打擊數據用
+    stats_table, max_inning, total = get_stats_table(game_id)      # 打擊數據用
+
     defense_stats = DefenseStat.query.filter_by(game_id=game_id).order_by(DefenseStat.inning, DefenseStat.id).all()
     defense_records = []
     for r in defense_stats:
@@ -403,6 +435,22 @@ def game_detail(game_id):
             "result": r.result
         })
     pitcher_stats, pitcher_total = calculate_pitcher_stats(game_id)   # 投手數據用
+
+    # ==== 新增投手每局用球數表格計算 ====
+    pitchers = {r.pitcher_id: Player.query.get(r.pitcher_id).name for r in defense_stats if r.pitcher_id}
+    innings = sorted(set([r.inning for r in defense_stats]))
+    pitcher_inning_data = []
+    for pid, pname in pitchers.items():
+        per_inning = []
+        for inn in innings:
+            count = sum(r.pitch_count for r in defense_stats if r.pitcher_id == pid and r.inning == inn)
+            per_inning.append(count if count != 0 else "")
+        pitcher_inning_data.append({
+            "name": pname,
+            "data": per_inning
+        })
+    # innings: 1,2,...N  pitcher_inning_data: list of {name, [n局,n局,...]}
+    
     return render_template('game_detail.html',
         game=game,
         stats_table=stats_table,
@@ -410,8 +458,22 @@ def game_detail(game_id):
         total=total,                  # for 打擊
         defense_records=defense_records,
         pitcher_stats=pitcher_stats,
-        pitcher_total=pitcher_total   # for 投手
+        pitcher_total=pitcher_total,  # for 投手
+        pitcher_innings=innings,      # 表頭局數
+        pitcher_inning_data=pitcher_inning_data  # 表格內容
     )
+
+@app.route('/record_match_select')
+def record_match_select():
+    games = Game.query.filter_by(is_recorded=False).all()
+    return render_template('record_match_select.html', games=games)
+
+@app.route('/finish_record/<int:game_id>', methods=['POST'])
+def finish_record(game_id):
+    game = Game.query.get_or_404(game_id)
+    game.is_recorded = True
+    db.session.commit()
+    return redirect(url_for('index'))
 
 if __name__ == '__main__':
     with app.app_context():
