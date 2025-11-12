@@ -2,9 +2,12 @@
 {% block content %}
 <h2>新增比賽</h2>
 <form method="post">
-    日期：<input type="text" name="date"><br>
-    對手：<input type="text" name="opponent"><br>
-    <input type="submit" value="送出">
+  <label>比賽日期：</label><input name="date"><br>
+  <label>對手：</label><input name="opponent"><br>
+  <label>我方先攻/先守：</label>
+  <label><input type="radio" name="first_attack" value="A" checked>先攻</label>
+  <label><input type="radio" name="first_attack" value="D">先守</label><br>
+  <button type="submit">開始比賽</button>
 </form>
 <a href="{{ url_for('index') }}">回首頁</a>
 {% endblock %}

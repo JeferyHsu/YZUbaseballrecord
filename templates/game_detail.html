@@ -63,5 +63,71 @@
         <td>-</td>
     </tr>
 </table>
+<hr>
+<h2>投手成績</h2>
+<table border="1" style="border-collapse: collapse;">
+  <tr>
+    <th>投手</th><th>投球局數</th><th>面對打席</th><th>投球數</th><th>好球數</th>
+    <th>安打</th><th>全壘打</th><th>四壞</th><th>觸身</th><th>三振</th><th>失分</th>
+  </tr>
+  {% for p in pitcher_stats %}
+  <tr>
+    <td>{{ p.name }}</td>
+    <td>{{ p.ip }}</td>
+    <td>{{ p.batters }}</td>
+    <td>{{ p.pitch_count }}</td>
+    <td>{{ p.strikes }}</td>
+    <td>{{ p.hits }}</td>
+    <td>{{ p.hr }}</td>
+    <td>{{ p.bb }}</td>
+    <td>{{ p.hbp }}</td>
+    <td>{{ p.k }}</td>
+    <td>{{ p.run }}</td>
+  </tr>
+  {% endfor %}
+  <tr style="background-color:#fdf4dc;font-weight:bold;">
+    <td>總計</td>
+    <td>{{ pitcher_total.ip }}</td>
+    <td>{{ pitcher_total.batters }}</td>
+    <td>{{ pitcher_total.pitch_count }}</td>
+    <td>{{ pitcher_total.strikes }}</td>
+    <td>{{ pitcher_total.hits }}</td>
+    <td>{{ pitcher_total.hr }}</td>
+    <td>{{ pitcher_total.bb }}</td>
+    <td>{{ pitcher_total.hbp }}</td>
+    <td>{{ pitcher_total.k }}</td>
+    <td>{{ pitcher_total.run }}</td>
+  </tr>
+</table>
+
+<h2>防守打席紀錄</h2>
+<table border="1" style="border-collapse: collapse;">
+    <tr>
+      <th>局數</th>
+      <th>投手</th>
+      <th>對方打者</th>
+      <th>好球</th>
+      <th>壞球</th>
+      <th>球數</th>
+      <th>結果</th>
+    </tr>
+    {% for d in defense_records %}
+    <tr>
+      <td>{{ d.inning }}</td>
+      <td>{{ d.pitcher.name if d.pitcher else '' }}</td>
+      <td>{{ d.batter_name }}</td>
+      <td>{{ d.strike }}</td>
+      <td>{{ d.ball }}</td>
+      <td>{{ d.pitch_count }}</td>
+      <td>{{ d.result }}</td>
+    </tr>
+    {% endfor %}
+    <tr style="background-color:#fdf4dc;font-weight:bold;">
+      <td colspan="5">Total</td>
+      <td>{{ defense_records | sum(attribute='pitch_count') }}</td>
+      <td>-</td>
+    </tr>
+</table>
+
 <a href="{{ url_for('games') }}">返回歷史比賽</a>
 {% endblock %}

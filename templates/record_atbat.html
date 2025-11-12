@@ -5,7 +5,7 @@
     <span style="font-size:1.2em;">我方 vs {{ opponent }}</span>
 </h2>
 <hr>
-<h2>第 {{ inning }} 局｜出局數：{{ outs }}</h2>
+<h2>第 {{ inning }} 局{{ '上' if is_top else '下' }}｜出局數：{{ outs }}</h2>
 <h3>第 {{ order + 1 }} 棒 - {{ batter.name }}</h3>
 <form method="post">
     <label>打擊結果：</label>

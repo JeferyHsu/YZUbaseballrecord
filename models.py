@@ -14,6 +14,7 @@ class Game(db.Model):
     opponent = db.Column(db.String(100), nullable=False)
     team_score = db.Column(db.Integer, nullable=True)
     opponent_score = db.Column(db.Integer, nullable=True)
+    first_attack = db.Column(db.String(1))  # 'A': 先攻, 'D': 先守
 
 class GameBattingOrder(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -33,3 +34,15 @@ class AtBatStat(db.Model):
     rbis = db.Column(db.Integer, default=0)
     position = db.Column(db.String(20))
     note = db.Column(db.String(50))
+
+class DefenseStat(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    game_id = db.Column(db.Integer, db.ForeignKey('game.id'))
+    inning = db.Column(db.Integer)
+    pitcher_id = db.Column(db.Integer, db.ForeignKey('player.id'))
+    batter_name = db.Column(db.String(32))   # 可以另外設 Player 或只記名
+    strike = db.Column(db.Integer)
+    ball = db.Column(db.Integer)
+    pitch_count = db.Column(db.Integer)
+    result = db.Column(db.String(24))        # 打席結果
+    runs = db.Column(db.Integer, default=0)  # 失分
