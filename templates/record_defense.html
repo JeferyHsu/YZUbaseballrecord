@@ -82,11 +82,14 @@
 {% if outs >= 3 %}
     <p style="color:blue;font-weight:bold;">三出局，自動進入進攻紀錄頁。</p>
     <script>
-    setTimeout(function(){
-        window.location = "{{ url_for('record_defense', game_id=game_id, inning=inning+1) }}?pitcher_id={{ curr_pitcher_id }}";
-    }, 1200)
-</script>
-
+        setTimeout(function() {
+            {% if is_top %}
+                window.location = "{{ url_for('record_atbat', game_id=game_id, order=0, inning=inning) }}";
+            {% else %}
+                window.location = "{{ url_for('record_atbat', game_id=game_id, order=0, inning=inning+1) }}";
+            {% endif %}
+        }, 1200);
+    </script>
 {% endif %}
 
 <form action="{{ url_for('index') }}" style="display:inline;">

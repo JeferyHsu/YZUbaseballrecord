@@ -7,7 +7,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'test_secret_key'
 db.init_app(app)
 
-OUT_RESULTS = {'三振': 1, '雙殺': 2, '外飛': 1, '內滾': 1, '內飛': 1, '犧牲': 1}
+OUT_RESULTS = {'三振': 1, '不死三振': 0, '雙殺': 2, '外飛': 1, '內滾': 1, '內飛': 1, '犧牲': 1}
 
 def calculate_outs(game_id, inning):
     atbats = AtBatStat.query.filter_by(game_id=game_id, inning=inning).all()
@@ -152,19 +152,24 @@ def delete_game(game_id):
 def set_batting_order(game_id):
     game = Game.query.get_or_404(game_id)
     players = Player.query.all()
+    # 檢查是否已設定棒次
+    ordered = GameBattingOrder.query.filter_by(game_id=game_id).count()
+    if ordered > 0 and request.method == 'GET':
+        # 已有紀錄的直接跳進攻/防守紀錄頁，不再顯示設定
+        if game.first_attack == 'A':
+            return redirect(url_for('record_atbat', game_id=game_id, order=0, inning=1))
+        else:
+            return redirect(url_for('record_defense', game_id=game_id, inning=1))
     if request.method == 'POST':
         GameBattingOrder.query.filter_by(game_id=game_id).delete()
         db.session.commit()
-        bat_orders = []
-        for player in players:
-            order_num = request.form.get(f'order_{player.id}')
-            if order_num:
-                bat_orders.append((int(order_num)-1, player.id))
-        bat_orders.sort()
-        for idx, (_, player_id) in enumerate(bat_orders):
-            gbo = GameBattingOrder(game_id=game_id, player_id=player_id, order=idx)
-            db.session.add(gbo)
+        for order in range(1, 10):
+            pid = request.form.get(f'order_{order}')
+            if pid:
+                gbo = GameBattingOrder(game_id=game_id, player_id=int(pid), order=order-1)
+                db.session.add(gbo)
         db.session.commit()
+        # 進攻或防守
         if game.first_attack == 'A':
             return redirect(url_for('record_atbat', game_id=game_id, order=0, inning=1))
         else:
@@ -180,7 +185,7 @@ def record_atbat(game_id, order, inning):
     order = int(order)
     inning = int(inning)
     current_batter = batting_orders[order]
-    result_types = ['三振', '四壞', '觸身', '內安', '一安', '二安', '三安', '全壘', '失誤', '雙殺', '犧牲', '外飛', '內滾', '內飛']
+    result_types = ['三振', '不死三振', '四壞', '觸身', '內安', '一安', '二安', '三安', '全壘', '失誤', '雙殺', '犧牲', '外飛', '內滾', '內飛']
     game = Game.query.get_or_404(game_id)
     outs = calculate_outs(game_id, inning)
     if request.method == 'POST':

@@ -25,7 +25,20 @@
 <br>
 <a href="{{ url_for('undo_atbat', game_id=game_id, order=order, inning=inning) }}">復原上一筆</a>
 <br>
-<a href="{{ url_for('index') }}">完成並返回首頁</a>
+<a href="{{ url_for('index') }}">返回首頁</a>
+
+{% if outs >= 3 %}
+    <p style="color:blue;font-weight:bold;">三出局，自動切換介面。</p>
+    <script>
+    setTimeout(function(){
+        {% if is_top %}
+            window.location = "{{ url_for('record_defense', game_id=game_id, inning=inning, is_top=False) }}";
+        {% else %}
+            window.location = "{{ url_for('record_defense', game_id=game_id, inning=inning+1, is_top=True) }}";
+        {% endif %}
+    }, 1200)
+    </script>
+{% endif %}
 
 <form action="{{ url_for('finish_record', game_id=game_id) }}" method="post">
     <button type="submit" style="background:#28a745;color:white;font-size:16px;">完成紀錄</button>
