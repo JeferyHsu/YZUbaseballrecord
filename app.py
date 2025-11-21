@@ -3,7 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for
 from models import db, Player, Game, GameBattingOrder, AtBatStat, DefenseStat
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://yzubaseballdb_user:aXO3IkMltKGlMWG9BA9bW7D2GcZV5nQY@dpg-d4ge6cggjchc73ajr530-a/yzubaseballdb')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'test_secret_key'
 db.init_app(app)
