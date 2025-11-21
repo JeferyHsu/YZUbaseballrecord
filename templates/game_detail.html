@@ -51,7 +51,7 @@
         {% endfor %}
     {% endfor %}
     <tr style="background: #fff2d3;">
-        <td>Total</td>
+        <td>總計</td>
         <td></td>
         {% for t in total.inning_results %}
             <td>{{ t }}</td>
@@ -61,7 +61,7 @@
         <td>{{ total.hr }}</td>
         <td>{{ total.rbi }}</td>
         <td>{{ total.run if total.run is defined else 0 }}</td>
-        <td>-</td>
+        <td>{{ "%.3f" | format(total.hit/total.ab)}}</td>
     </tr>
 </table>
 <hr>
@@ -148,7 +148,7 @@
     </tr>
     {% endfor %}
     <tr style="background-color:#fdf4dc;font-weight:bold;">
-      <td colspan="5">Total</td>
+      <td colspan="5">總計</td>
       <td>{{ defense_records | sum(attribute='pitch_count') }}</td>
       <td>-</td>
     </tr>
