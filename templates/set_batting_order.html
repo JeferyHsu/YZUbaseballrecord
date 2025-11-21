@@ -11,7 +11,7 @@
                 <select name="order_{{ order }}">
                     <option value="">--請選擇--</option>
                     {% for player in players %}
-                        <option value="{{ player.id }}">{{ player.name }}</option>
+                        <option value="{{ player.id }}">{{player.number}} - {{ player.name }}</option>
                     {% endfor %}
                 </select>
             </td>
