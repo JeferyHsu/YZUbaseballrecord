@@ -1,75 +1,97 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <title>防守紀錄</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
+{% extends "base.html" %}
+{% block content %}
+
 <h2>第 {{ inning }} 局{{ '上' if is_top else '下' }}｜出局數：{{ outs }}</h2>
-
+<p style="font-size:1.2em;margin-bottom:12px;">
+    目前投手：{{ curr_pitcher.name if curr_pitcher else '未指定' }}
+</p>
 <form method="post" id="defense_form">
-    <input type="hidden" name="pitcher_id" value="{{ curr_pitcher_id }}">
-
-    <p>目前投手：<strong>
-        {% for p in pitchers %}
-            {% if p.id == curr_pitcher_id %}{{ p.name }}{% endif %}
-        {% endfor %}
-    </strong></p>
-
-    <label>打席球員（對方）</label>
-    <input name="batter_name" value="{{ last_batter_name }}">
-
-    <label>好球：</label>
-    <input name="strike" type="number" min="0" max="3" value="0" required>
-
-    <label>壞球：</label>
-    <input name="ball" type="number" min="0" max="4" value="0" required>
-
-    <label>本打席投球：</label>
-    <input name="pitch_count" type="number" min="0" value="0" required>
-
-    <label>打席結果：</label>
-    <select name="result_select" required>
-        <option value="三振">三振</option>
-        <option value="四壞">四壞</option>
-        <option value="觸身">觸身</option>
-        <option value="內滾">內滾</option>
-        <option value="內飛">內飛</option>
-        <option value="犧牲">犧牲</option>
-        <option value="外飛">外飛</option>
-        <option value="雙殺">雙殺</option>
-        <option value="內安">內安</option>
-        <option value="一安">一安</option>
-        <option value="二安">二安</option>
-        <option value="三安">三安</option>
-        <option value="全壘">全壘</option>
-        <option value="失誤">失誤</option>
-    </select>
-
-    <label>失分：</label>
-    <input name="runs" type="number" min="0" value="0">
-
-    <!-- 隱藏欄位，真正送出的 result -->
-    <input type="hidden" id="real_result" name="result" value="">
-
-    <br><br>
-    <button type="submit" onclick="
-        // 送出時將下拉選單值填進隱藏欄位
-        document.getElementById('real_result').value = document.querySelector('select[name=result_select]').value;
-    ">確定送出</button>
-
-    <button type="button" onclick="
-        // 跑者出局按鈕，強制設定隱藏欄位為 RUNNER_OUT 並送出表單
-        document.getElementById('real_result').value = 'RUNNER_OUT';
-        document.getElementById('defense_form').submit();
-    ">跑者出局</button>
+  <table style="margin:0 auto;">
+    <tr>
+      <td style="text-align:right;"><label>打席球員（對方）</label></td>
+      <td><input name="batter_name" value="{{ last_batter_name }}"></td>
+      <td style="text-align:right;"><label>打席結果：</label></td>
+      <td colspan="3">
+        <select name="result_select" required>
+            <option value="三振">三振</option>
+            <option value="四壞">四壞</option>
+            <option value="觸身">觸身</option>
+            <option value="內滾">內滾</option>
+            <option value="內飛">內飛</option>
+            <option value="犧牲">犧牲</option>
+            <option value="外飛">外飛</option>
+            <option value="雙殺">雙殺</option>
+            <option value="內安">內安</option>
+            <option value="一安">一安</option>
+            <option value="二安">二安</option>
+            <option value="三安">三安</option>
+            <option value="全壘">全壘</option>
+            <option value="失誤">失誤</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td style="text-align:right;"><label>好球：</label></td>
+      <td>
+        <div class="input-group">
+          <button type="button" onclick="changeInput('strike',-1)">-</button>
+          <input id="strike" name="strike" type="number" min="0" max="3" value="0" required>
+          <button type="button" onclick="changeInput('strike',1)">+</button>
+        </div>
+      </td>
+      <td style="text-align:right;"><label>壞球：</label></td>
+      <td>
+        <div class="input-group">
+          <button type="button" onclick="changeInput('ball',-1)">-</button>
+          <input id="ball" name="ball" type="number" min="0" max="4" value="0" required>
+          <button type="button" onclick="changeInput('ball',1)">+</button>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td style="text-align:right;"><label>本打席投球：</label></td>
+      <td>
+        <div class="input-group">
+          <button type="button" onclick="changeInput('pitch_count',-1)">-</button>
+          <input id="pitch_count" name="pitch_count" type="number" min="0" value="0" required>
+          <button type="button" onclick="changeInput('pitch_count',1)">+</button>
+        </div>
+      </td>
+      <td style="text-align:right;"><label>失分：</label></td>
+      <td>
+        <div class="input-group">
+          <button type="button" onclick="changeInput('runs',-1)">-</button>
+          <input id="runs" name="runs" type="number" min="0" value="0">
+          <button type="button" onclick="changeInput('runs',1)">+</button>
+        </div>
+      </td>
+    </tr>
+  </table>
+  <input type="hidden" id="real_result" name="result" value="">
+  <br>
+    <!-- 按鈕區塊 -->
+    <div style="display: flex; justify-content: flex-start; gap: 32px; margin-top:30px;">
+    <button type="button"
+        onclick="document.getElementById('real_result').value = 'RUNNER_OUT'; document.getElementById('defense_form').submit();">
+        跑者出局
+    </button>
+    </div>
+    <div style="display:flex; justify-content:flex-start; margin-top:18px;">
+    <button type="submit"
+        onclick="document.getElementById('real_result').value = document.querySelector('select[name=result_select]').value;">
+        確定送出
+    </button>
+    </div>
 </form>
 
-<!-- 換投手按鈕，可跳轉換投手頁面 -->
-<form action="{{ url_for('switch_pitcher', game_id=game_id, inning=inning) }}" method="get" style="display:inline;">
+<form action="{{ url_for('switch_pitcher', game_id=game_id, inning=inning) }}" method="get" style="display:flex; justify-content:flex-start; margin-top:18px;">
     <button type="submit">換投手</button>
 </form>
+
+<p>{{ curr_pitcher.name if curr_pitcher else '' }} 本局球數：{{ curr_pitcher_inning_pitch_count }}</p>
+<p>{{ curr_pitcher.name if curr_pitcher else '' }} 全場累計球數：{{ pitcher_pitch_count }}</p>
+<p>本局總球數：{{ total_pitch_this_inning }}</p>
+<p>全場總球數：{{ total_pitch_all }}</p>
 
 <table border="1" style="margin-top:16px;">
     <tr>
@@ -91,21 +113,16 @@
         <td>{{ record.ball }}</td>
         <td>{{ record.pitch_count }}</td>
         <td>
-          {% if record.result == 'RUNNER_OUT' %}
-            跑者出局
-          {% else %}
-            {{ record.result }}
-          {% endif %}
+            {% if record.result == 'RUNNER_OUT' %}
+                跑者出局
+            {% else %}
+                {{ record.result }}
+            {% endif %}
         </td>
         <td>{{ record.runs }}</td>
     </tr>
     {% endfor %}
 </table>
-
-<p>本投手本局球數：{{ curr_pitcher_inning_pitch_count }}</p>
-<p>本投手全場累計球數：{{ pitcher_pitch_count }}</p>
-<p>本局總球數：{{ total_pitch_this_inning }}</p>
-<p>全場總球數：{{ total_pitch_all }}</p>
 
 {% if outs >= 3 %}
     <p style="color:blue;font-weight:bold;">三出局，自動進入進攻紀錄頁。</p>
@@ -128,5 +145,17 @@
     <button type="submit" style="background:#28a745;color:white;font-size:16px;">完成紀錄</button>
 </form>
 
-</body>
-</html>
+<script>
+function changeInput(id, delta) {
+    let input = document.getElementById(id);
+    let value = parseInt(input.value) || 0;
+    let min = parseInt(input.min) || 0;
+    let max = parseInt(input.max) || 9999;
+    value += delta;
+    if (value < min) value = min;
+    if (value > max) value = max;
+    input.value = value;
+}
+</script>
+
+{% endblock %}

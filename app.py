@@ -252,7 +252,7 @@ def record_defense(game_id, inning):
     if request.method == 'POST':
         curr_pitcher_id = request.form.get('pitcher_id', type=int)
     if curr_pitcher_id is None and pitchers:
-        if hasattr(game, 'current_pitcher_id') and game.current_pitcher_id:
+        if getattr(game, 'current_pitcher_id', None):
             curr_pitcher_id = game.current_pitcher_id
         else:
             curr_pitcher_id = pitchers[0].id
@@ -298,7 +298,7 @@ def record_defense(game_id, inning):
 
         # 其他情況續留防守頁面
         return redirect(url_for('record_defense', game_id=game_id, inning=inning, pitcher_id=curr_pitcher_id))
-
+    
     # GET請求 - 計算各種投手用球數等現有邏輯，不變
     pitcher_pitch_count = 0
     if curr_pitcher_id:
@@ -333,10 +333,11 @@ def record_defense(game_id, inning):
         r.pitch_count
         for r in DefenseStat.query.filter_by(game_id=game_id, inning=inning, pitcher_id=curr_pitcher_id).all()
     )
+    curr_pitcher = Player.query.get(curr_pitcher_id) if curr_pitcher_id else None
 
     return render_template('record_defense.html',
         game_id=game_id, inning=inning,
-        pitchers=pitchers, curr_pitcher_id=curr_pitcher_id,
+        pitchers=pitchers, curr_pitcher_id=curr_pitcher_id,curr_pitcher=curr_pitcher,
         last_batter_name=last_batter_name,
         inning_records=inning_records,
         is_top=(game.first_attack == 'D'),
@@ -408,7 +409,9 @@ def switch_pitcher(game_id, inning):
     game = Game.query.get_or_404(game_id)
     if request.method == 'POST':
         new_pitcher_id = int(request.form['pitcher_id'])
-        # 換人後直接redirect回防守頁，帶新投手
+        game.current_pitcher_id = new_pitcher_id      # 關鍵！寫入Game紀錄
+        db.session.commit()
+        # 換投後帶著新的投手ID跳回record_defense
         return redirect(url_for('record_defense', game_id=game_id, inning=inning, pitcher_id=new_pitcher_id))
     return render_template('switch_pitcher.html', pitchers=pitchers, game_id=game_id, inning=inning)
 

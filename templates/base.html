@@ -5,8 +5,10 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <div class="main-container">
     <h1>元智大學棒球隊</h1>
     <hr>
     {% block content %}{% endblock %}
+    </div>
 </body>
 </html>
