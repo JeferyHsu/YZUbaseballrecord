@@ -7,18 +7,27 @@
 <hr>
 <h2>第 {{ inning }} 局{{ '上' if is_top else '下' }}｜出局數：{{ outs }}</h2>
 <h3>第 {{ order + 1 }} 棒 - {{ batter.name }}</h3>
-<form method="post">
+<form method="post" id="atbat_form">
     <label>打擊結果：</label>
-    <select name="result" required>
+    <select name="result_select" required>
         {% for r in result_types %}
         <option value="{{ r }}">{{ r }}</option>
         {% endfor %}
     </select>
+
+    <input type="hidden" name="result" id="real_result" value="">
+
     <br><br>
     <label>打點 (RBI)：</label>
     <input type="number" name="rbis" min="0" value="0">
     <br><br>
-    <button type="submit">確定送出</button>
+
+    <button type="submit" onclick="document.getElementById('real_result').value = document.querySelector('select[name=result_select]').value;">確定送出</button>
+    <button type="button" onclick="
+        document.getElementById('real_result').value = 'RUNNER_OUT';
+        document.getElementById('atbat_form').submit();
+    ">跑者出局
+    </button>
 </form>
 <br>
 <a href="{{ url_for('switch_player', game_id=game_id) }}?order={{ order }}">球員換人</a>

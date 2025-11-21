@@ -9,9 +9,16 @@ db.init_app(app)
 
 OUT_RESULTS = {'三振': 1, '不死三振': 0, '雙殺': 2, '外飛': 1, '內滾': 1, '內飛': 1, '犧牲': 1}
 
-def calculate_outs(game_id, inning):
-    atbats = AtBatStat.query.filter_by(game_id=game_id, inning=inning).all()
-    outs = sum(OUT_RESULTS.get(ab.result, 0) for ab in atbats)
+def calculate_outs(game_id, inning, source='atbat'):
+    if source == 'atbat':
+        records = AtBatStat.query.filter_by(game_id=game_id, inning=inning).all()
+        outs = sum(OUT_RESULTS.get(r.result, 0) for r in records)
+        # 加入跑者出局數
+        outs += sum(1 for r in records if r.result == 'RUNNER_OUT')
+    else:
+        records = DefenseStat.query.filter_by(game_id=game_id, inning=inning).all()
+        outs = sum(OUT_RESULTS.get(r.result, 0) for r in records)
+        outs += sum(1 for r in records if r.result == 'RUNNER_OUT')
     return outs
 
 def calculate_pitcher_stats(game_id):
@@ -34,13 +41,16 @@ def calculate_pitcher_stats(game_id):
                 'k': 0,
                 'run': 0
             }
-        pitcher_groups[pid]['batters'] += 1
+        if rec.result != 'RUNNER_OUT':
+            pitcher_groups[pid]['batters'] += 1
         pitcher_groups[pid]['pitch_count'] += rec.pitch_count
         pitcher_groups[pid]['strikes'] += rec.strike
         pitcher_groups[pid]['run'] += rec.runs
         # 判斷出局
         if rec.result in ['三振', '內滾', '外飛', '雙殺', '內飛', '犧牲']:
             pitcher_groups[pid]['innings_outs'] += (2 if rec.result == '雙殺' else 1)
+        if rec.result == 'RUNNER_OUT':
+            pitcher_groups[pid]['innings_outs'] += 1
         # 記錄安打 (可依你設計擴大)
         if rec.result in ['內安', '一安', '二安', '三安', '全壘']:
             pitcher_groups[pid]['hits'] += 1
@@ -185,7 +195,7 @@ def record_atbat(game_id, order, inning):
     order = int(order)
     inning = int(inning)
     current_batter = batting_orders[order]
-    result_types = ['三振', '不死三振', '四壞', '觸身', '內安', '一安', '二安', '三安', '全壘', '失誤', '雙殺', '犧牲', '外飛', '內滾', '內飛']
+    result_types = ['三振', '不死三振', '四壞', '觸身', '內安', '一安', '二安', '三安', '全壘', '失誤', '雙殺', '犧牲', '外飛', '內滾', '內飛', 'RUNNER_OUT']
     game = Game.query.get_or_404(game_id)
     outs = calculate_outs(game_id, inning)
     if request.method == 'POST':
@@ -208,6 +218,10 @@ def record_atbat(game_id, order, inning):
             game.team_score = (game.team_score or 0) + rbis
         db.session.commit()
         outs = calculate_outs(game_id, inning)
+        if selected_result == 'RUNNER_OUT':
+        # 出局數+1，但不換下個打者
+        # 直接重新顯示同一order和inning的頁面
+            return redirect(url_for('record_atbat', game_id=game_id, order=order, inning=inning))
         if outs >= 3:
             if game.first_attack == 'A':
                 # 先攻隊伍，進攻結束換防守，同局下半
@@ -234,10 +248,7 @@ def record_defense(game_id, inning):
     game = Game.query.get_or_404(game_id)
     last_batter_name = ""
 
-    curr_pitcher_id = None
-    # 優先用 GET query string 的 pitcher_id、再用 POST
     curr_pitcher_id = request.args.get('pitcher_id', type=int)
-    print("curr_pitcher_id:", curr_pitcher_id, "request.args:", request.args)
     if request.method == 'POST':
         curr_pitcher_id = request.form.get('pitcher_id', type=int)
     if curr_pitcher_id is None and pitchers:
@@ -246,7 +257,6 @@ def record_defense(game_id, inning):
         else:
             curr_pitcher_id = pitchers[0].id
 
-    # 紀錄打席
     if request.method == 'POST':
         batter_name = request.form['batter_name']
         strike = int(request.form['strike'])
@@ -254,6 +264,7 @@ def record_defense(game_id, inning):
         pitch_count = int(request.form['pitch_count'])
         result = request.form['result']
         runs = int(request.form.get('runs', 0))
+
         stat = DefenseStat(
             game_id=game_id, inning=inning,
             pitcher_id=curr_pitcher_id, batter_name=batter_name,
@@ -262,14 +273,33 @@ def record_defense(game_id, inning):
             runs=runs
         )
         db.session.add(stat)
+
         # 更新對手分數
         game.opponent_score = (game.opponent_score or 0) + runs
-        curr_pitcher_id = request.form.get('pitcher_id', type=int)
         game.current_pitcher_id = curr_pitcher_id
         db.session.commit()
         last_batter_name = batter_name
 
-    # 這裡只算一次投手球數
+        # 計算outs時包含跑者出局 'RUNNER_OUT'
+        records = DefenseStat.query.filter_by(game_id=game_id, inning=inning).all()
+        outs = sum(OUT_RESULTS.get(r.result, 0) for r in records)
+        outs += sum(1 for r in records if r.result == 'RUNNER_OUT')
+
+        # 如果是跑者出局，留在同頁不跳轉不換投手
+        if result == 'RUNNER_OUT':
+            return redirect(url_for('record_defense', game_id=game_id, inning=inning, pitcher_id=curr_pitcher_id))
+
+        # 三出局跳轉，確保只有POST時觸發
+        if outs >= 3:
+            if game.first_attack == 'A':
+                return redirect(url_for('record_atbat', game_id=game_id, order=0, inning=inning+1, pitcher_id=curr_pitcher_id))
+            else:
+                return redirect(url_for('record_atbat', game_id=game_id, order=0, inning=inning, pitcher_id=curr_pitcher_id))
+
+        # 其他情況續留防守頁面
+        return redirect(url_for('record_defense', game_id=game_id, inning=inning, pitcher_id=curr_pitcher_id))
+
+    # GET請求 - 計算各種投手用球數等現有邏輯，不變
     pitcher_pitch_count = 0
     if curr_pitcher_id:
         pitcher_pitch_count = sum(
@@ -277,19 +307,10 @@ def record_defense(game_id, inning):
             for r in DefenseStat.query.filter_by(game_id=game_id).all()
             if r.pitcher_id == curr_pitcher_id
         )
-
     records = DefenseStat.query.filter_by(game_id=game_id, inning=inning).all()
     outs = sum(OUT_RESULTS.get(r.result, 0) for r in records)
-    # 三出局跳轉，注意 POST 才切換
-    if outs >= 3 and request.method == 'POST':
-        if game.first_attack == 'A':
-            # 先攻，防守結束進入下一局上半進攻
-            return redirect(url_for('record_atbat', game_id=game_id, order=0, inning=inning+1,pitcher_id=curr_pitcher_id))
-        else:
-            # 先守，防守結束同局下半進攻
-            return redirect(url_for('record_atbat', game_id=game_id, order=0, inning=inning,pitcher_id=curr_pitcher_id))
+    outs += sum(1 for r in records if r.result == 'RUNNER_OUT')
 
-    # 打席資料
     inning_records = []
     for r in records:
         pitcher = Player.query.get(r.pitcher_id) if r.pitcher_id else None
@@ -302,12 +323,16 @@ def record_defense(game_id, inning):
             "result": r.result,
             "runs": r.runs
         })
+        for rec in inning_records:
+            if rec['result'] == 'RUNNER_OUT':
+                rec['result'] = '跑者出局'
+
     total_pitch_this_inning = sum(r.pitch_count for r in records)
     total_pitch_all = sum(r.pitch_count for r in DefenseStat.query.filter_by(game_id=game_id).all())
     curr_pitcher_inning_pitch_count = sum(
-    r.pitch_count
-    for r in DefenseStat.query.filter_by(game_id=game_id, inning=inning, pitcher_id=curr_pitcher_id).all()
-    )   
+        r.pitch_count
+        for r in DefenseStat.query.filter_by(game_id=game_id, inning=inning, pitcher_id=curr_pitcher_id).all()
+    )
 
     return render_template('record_defense.html',
         game_id=game_id, inning=inning,
@@ -394,6 +419,8 @@ def get_stats_table(game_id):
     groups = {}
     total = {'ab': 0, 'hit': 0, 'hr': 0, 'rbi': 0, 'run': 0, 'inning_results': [0 for _ in range(max_inning)]}
     for ab in atbats:
+        if ab.result == 'RUNNER_OUT':
+            continue
         key = (ab.order, ab.player_id, ab.note or '', ab.position or '')
         if key not in groups:
             groups[key] = {

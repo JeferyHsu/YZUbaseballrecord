@@ -3,27 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <title>防守紀錄</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 <h2>第 {{ inning }} 局{{ '上' if is_top else '下' }}｜出局數：{{ outs }}</h2>
 
-<form method="post">
+<form method="post" id="defense_form">
     <input type="hidden" name="pitcher_id" value="{{ curr_pitcher_id }}">
+
     <p>目前投手：<strong>
         {% for p in pitchers %}
             {% if p.id == curr_pitcher_id %}{{ p.name }}{% endif %}
         {% endfor %}
     </strong></p>
+
     <label>打席球員（對方）</label>
     <input name="batter_name" value="{{ last_batter_name }}">
+
     <label>好球：</label>
-    <input name="strike" type="number" min="0" max="3" value="0">
+    <input name="strike" type="number" min="0" max="3" value="0" required>
+
     <label>壞球：</label>
-    <input name="ball" type="number" min="0" max="4" value="0">
+    <input name="ball" type="number" min="0" max="4" value="0" required>
+
     <label>本打席投球：</label>
-    <input name="pitch_count" type="number" min="1" value="1">
+    <input name="pitch_count" type="number" min="0" value="0" required>
+
     <label>打席結果：</label>
-    <select name="result">
+    <select name="result_select" required>
         <option value="三振">三振</option>
         <option value="四壞">四壞</option>
         <option value="觸身">觸身</option>
@@ -39,12 +46,27 @@
         <option value="全壘">全壘</option>
         <option value="失誤">失誤</option>
     </select>
+
     <label>失分：</label>
     <input name="runs" type="number" min="0" value="0">
-    <button type="submit">記錄打席</button>
+
+    <!-- 隱藏欄位，真正送出的 result -->
+    <input type="hidden" id="real_result" name="result" value="">
+
+    <br><br>
+    <button type="submit" onclick="
+        // 送出時將下拉選單值填進隱藏欄位
+        document.getElementById('real_result').value = document.querySelector('select[name=result_select]').value;
+    ">確定送出</button>
+
+    <button type="button" onclick="
+        // 跑者出局按鈕，強制設定隱藏欄位為 RUNNER_OUT 並送出表單
+        document.getElementById('real_result').value = 'RUNNER_OUT';
+        document.getElementById('defense_form').submit();
+    ">跑者出局</button>
 </form>
 
-<!-- 換投手按鈕，可以設計為跳轉 switch_pitcher 頁面或直接用下拉 -->
+<!-- 換投手按鈕，可跳轉換投手頁面 -->
 <form action="{{ url_for('switch_pitcher', game_id=game_id, inning=inning) }}" method="get" style="display:inline;">
     <button type="submit">換投手</button>
 </form>
@@ -68,7 +90,13 @@
         <td>{{ record.strike }}</td>
         <td>{{ record.ball }}</td>
         <td>{{ record.pitch_count }}</td>
-        <td>{{ record.result }}</td>
+        <td>
+          {% if record.result == 'RUNNER_OUT' %}
+            跑者出局
+          {% else %}
+            {{ record.result }}
+          {% endif %}
+        </td>
         <td>{{ record.runs }}</td>
     </tr>
     {% endfor %}
@@ -95,9 +123,10 @@
 <form action="{{ url_for('index') }}" style="display:inline;">
     <button type="submit">返回首頁</button>
 </form>
-</body>
-</html>
 
 <form action="{{ url_for('finish_record', game_id=game_id) }}" method="post">
     <button type="submit" style="background:#28a745;color:white;font-size:16px;">完成紀錄</button>
 </form>
+
+</body>
+</html>

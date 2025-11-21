@@ -137,7 +137,13 @@
       <td>{{ d.strike }}</td>
       <td>{{ d.ball }}</td>
       <td>{{ d.pitch_count }}</td>
-      <td>{{ d.result }}</td>
+      <td>
+          {% if d.result == 'RUNNER_OUT' %}
+            跑者出局
+          {% else %}
+            {{ d.result }}
+          {% endif %}
+        </td>
     </tr>
     {% endfor %}
     <tr style="background-color:#fdf4dc;font-weight:bold;">
