@@ -1,12 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>功能列表</h2>
-<nav>
+<div style="display:flex; justify-content:center; gap:24px; margin-top:26px; flex-wrap:wrap;">
     <a class="menu-btn" href="{{ url_for('players') }}">球員管理</a>
     <a class="menu-btn" href="{{ url_for('games') }}">歷史比賽</a>
     <a class="menu-btn" href="{{ url_for('add_game') }}">新增比賽</a>
     <a class="menu-btn" href="{{ url_for('record_match_select') }}">記錄比賽</a>
-</nav>
+</div>
 
 {% if games|length == 0 %}
 {% endif %}

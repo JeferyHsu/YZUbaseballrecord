@@ -1,11 +1,34 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h2>第 {{ inning }} 局{{ '上' if is_top else '下' }}｜出局數：{{ outs }}</h2>
-<p style="font-size:1.2em;margin-bottom:12px;">
+<div style="text-align:center;margin:32px 0 18px 0;">
+    <!-- 賽事名稱美化 -->
+    <div style="font-size:2em; font-weight:700; color:#726bff; margin-bottom:8px; letter-spacing:0.8px;">
+        {{ game.tournament }}
+    </div>
+    <!-- 兩隊名字 -->
+    <div style="font-size:2.1em; font-weight:700; margin-top:12px; letter-spacing:1.5px;">
+        元智大學 <span style="font-size:1em; font-weight:500; color:#686;">vs</span>
+        <span style="font-weight:900; color:#222;">{{ game.opponent }}</span>
+    </div>    
+    <!-- 比數 -->
+    <div style="font-size:2.2em; font-weight:800; letter-spacing:1.5px;">
+        {{ game.team_score }} : {{ game.opponent_score }}
+    </div>
+</div>
+
+<hr style="margin-top:18px;">
+
+<h2 style="text-align:center;">
+    第 {{ inning }} 局{{ '上' if is_top else '下' }}｜出局數：{{ outs }}
+</h2>
+<h3 style="text-align:center;">
     目前投手：{{ curr_pitcher.name if curr_pitcher else '未指定' }}
-</p>
-<form method="post" id="defense_form">
+</h3>
+
+<br>
+<form method="post" id="defense_form" 
+onsubmit="document.getElementById('real_result').value = document.querySelector('select[name=result_select]').value;">
   <table style="margin:0 auto;">
     <tr>
       <td style="text-align:right;"><label>打席球員（對方）</label></td>
@@ -69,29 +92,63 @@
   </table>
   <input type="hidden" id="real_result" name="result" value="">
   <br>
-    <!-- 按鈕區塊 -->
-    <div style="display: flex; justify-content: flex-start; gap: 32px; margin-top:30px;">
-    <button type="button"
-        onclick="document.getElementById('real_result').value = 'RUNNER_OUT'; document.getElementById('defense_form').submit();">
-        跑者出局
-    </button>
+    <!-- 按鈕群組區塊（整體置中） -->
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 18px; margin-top:40px;">
+        <!-- 上方兩顆並排 -->
+        <div style="display: flex; gap: 32px;">
+            <button type="submit"
+            style="padding:12px 32px; font-size:1.1em; border-radius:7px; background:#726bff; color:white; border:none; font-weight:600;">
+            確定送出
+        </button>
+        <button type="button"
+            onclick="document.getElementById('real_result').value = 'RUNNER_OUT'; document.getElementById('defense_form').submit();"
+            style="padding:12px 32px; font-size:1.1em; border-radius:7px; background:#726bff; color:white; border:none; font-weight:600;">
+            跑者出局
+        </button>
     </div>
-    <div style="display:flex; justify-content:flex-start; margin-top:18px;">
+</form>
+
+<!-- 換投手（單獨一行一顆） -->
+<form action="{{ url_for('switch_pitcher', game_id=game_id, inning=inning) }}" method="get" style="margin:0;">
     <button type="submit"
-        onclick="document.getElementById('real_result').value = document.querySelector('select[name=result_select]').value;">
-        確定送出
+    style="padding:12px 32px; font-size:1.1em; border-radius:7px; background:#726bff; color:white; border:none; font-weight:600;">
+    換投手
     </button>
+</form>
+</div>
+
+<div style="
+    margin: 36px auto 0 auto; 
+    display: flex; 
+    justify-content: center;
+    gap: 28px;
+    flex-wrap: wrap;
+    max-width: 650px;">
+    <div style="background: #f7f7fb; border-radius: 9px; box-shadow:0px 2px 10px #eaeafd77; padding: 18px 28px; min-width:150px; margin-bottom:14px;">
+        <div style="font-size:1.08em; color:#666; margin-bottom:7px; text-align:center;">{{ curr_pitcher.name if curr_pitcher else '' }} 本局投球數</div>
+        <div style="font-size:1.7em; font-weight:700; color:#4d3eff; text-align:center; line-height:1.6;">
+            {{ curr_pitcher_inning_pitch_count }}
+        </div>
     </div>
-</form>
-
-<form action="{{ url_for('switch_pitcher', game_id=game_id, inning=inning) }}" method="get" style="display:flex; justify-content:flex-start; margin-top:18px;">
-    <button type="submit">換投手</button>
-</form>
-
-<p>{{ curr_pitcher.name if curr_pitcher else '' }} 本局球數：{{ curr_pitcher_inning_pitch_count }}</p>
-<p>{{ curr_pitcher.name if curr_pitcher else '' }} 全場累計球數：{{ pitcher_pitch_count }}</p>
-<p>本局總球數：{{ total_pitch_this_inning }}</p>
-<p>全場總球數：{{ total_pitch_all }}</p>
+    <div style="background: #f7f7fb; border-radius: 9px; box-shadow:0px 2px 10px #eaeafd77; padding: 18px 28px; min-width:150px; margin-bottom:14px;">
+        <div style="font-size:1.08em; color:#666; margin-bottom:7px; text-align:center;">{{ curr_pitcher.name if curr_pitcher else '' }} 全場累計球數</div>
+        <div style="font-size:1.7em; font-weight:700; color:#4d3eff; text-align:center; line-height:1.6;">
+            {{ pitcher_pitch_count }}
+        </div>
+    </div>
+    <div style="background: #f7f7fb; border-radius: 9px; box-shadow:0px 2px 10px #eaeafd77; padding: 18px 28px; min-width:150px; margin-bottom:14px;">
+        <div style="font-size:1.08em; color:#666; margin-bottom:7px; text-align:center;">本局總球數</div>
+        <div style="font-size:1.7em; font-weight:700; color:#4d3eff; text-align:center; line-height:1.6;">
+            {{ total_pitch_this_inning }}
+        </div>
+    </div>
+    <div style="background: #f7f7fb; border-radius: 9px; box-shadow:0px 2px 10px #eaeafd77; padding: 18px 28px; min-width:150px; margin-bottom:14px;">
+        <div style="font-size:1.08em; color:#666; margin-bottom:7px; text-align:center;">全場總球數</div>
+        <div style="font-size:1.7em; font-weight:700; color:#4d3eff; text-align:center; line-height:1.6;">
+            {{ total_pitch_all }}
+        </div>
+    </div>
+</div>
 
 <table border="1" style="margin-top:16px;">
     <tr>
@@ -137,13 +194,20 @@
     </script>
 {% endif %}
 
-<form action="{{ url_for('index') }}" style="display:inline;">
-    <button type="submit">返回首頁</button>
-</form>
-
-<form action="{{ url_for('finish_record', game_id=game_id) }}" method="post">
-    <button type="submit" style="background:#28a745;color:white;font-size:16px;">完成紀錄</button>
-</form>
+<div style="display:flex; justify-content:center; gap:30px; margin-top:26px;">
+    <form action="{{ url_for('index') }}" style="margin:0;">
+        <button type="submit"
+            style="padding:12px 32px; font-size:1.08em; border-radius:9px; background:#726bff; color:white; border:none; font-weight:600;">
+            返回首頁
+        </button>
+    </form>
+    <form action="{{ url_for('finish_record', game_id=game_id) }}" method="post" style="margin:0;">
+        <button type="submit"
+            style="padding:12px 32px; font-size:1.08em; border-radius:9px; background:#2db966; color:white; border:none; font-weight:600;"onclick="return confirm('確定完成紀錄嗎？');">
+            完成紀錄
+        </button>
+    </form>
+</div>
 
 <script>
 function changeInput(id, delta) {

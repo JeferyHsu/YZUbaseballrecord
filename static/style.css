@@ -26,19 +26,50 @@ h1, h2, h3, h4 {
 .menu-btn {
     display: inline-block;
     margin-right: 12px;
-    padding: 8px 18px;
+    padding: 10px 22px;
     background: #6c63ff;
     color: white;
     border-radius: 6px;
     text-decoration: none;
-    font-weight: bold;
-    transition: 0.2s;
-}
-.menu-btn:hover{
-    background: #502cff;
-    color: #ffd700;
+    font-weight: 700;
+    font-size: 1.08em;
+    letter-spacing: 1px;
+    transition: all 0.18s cubic-bezier(.51,.7,.36,.91);
+    box-shadow: 0 1px 6px #6c63ff33;
 }
 
+.menu-btn:hover {
+    background: #5047c5;
+    color: #ffd700;
+    box-shadow: 0 4px 18px #6c63ff55;
+    cursor: pointer;
+    transform: translateY(-2px) scale(1.09);
+}
+
+.form-btn {
+    display: inline-block;
+    margin: 0 auto;
+    padding: 10px 10px;
+    background: #6c63ff;
+    color: white;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1.08em;
+    letter-spacing: 1px;
+    transition: all 0.18s cubic-bezier(.51,.7,.36,.91);
+    box-shadow: 0 1px 6px #6c63ff33;
+}
+
+.form-btn:hover {
+    background: #5047c5;
+    color: #ffd700;
+    box-shadow: 0 4px 18px #6c63ff55;
+    cursor: pointer;
+    transform: translateY(-2px) scale(1.09);
+}
+
+/* 原有的 button 樣式，增加陰影、動畫 */
 button {
     margin: 6px;
     padding: 8px 16px;
@@ -48,12 +79,19 @@ button {
     color: white;
     font-size: 1em;
     font-weight: bold;
-    transition: background 0.2s;
+    box-shadow: 0 2px 8px #6c63ff22;
+    transition: all 0.18s cubic-bezier(.51,.7,.36,.91);
 }
+
+/* 按鈕 hover 互動再加彈跳、陰影、顏色強烈變化 */
 button:hover {
-    background: #502cff;
+    background: #5047c5;
     color: #ffd700;
+    box-shadow: 0 6px 22px #726bff55;
+    cursor: pointer;
+    transform: translateY(-2px) scale(1.07);
 }
+
 input, select {
     padding: 6px 10px;
     margin: 5px 0 12px 0;
@@ -72,7 +110,8 @@ table {
 th, td {
     border: 1px solid #d1d1e0;
     text-align: center;
-    padding: 8px 14px;
+    padding: 10px 16px;
+    font-size: 1.18em;
 }
 th {
     background: #6c63ff;

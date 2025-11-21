@@ -2,6 +2,7 @@
 {% block content %}
 <h2>新增比賽</h2>
 <form method="post">
+  <label>賽事名稱：</label><input name="tournament"><br>
   <label>比賽日期：</label><input name="date"><br>
   <label>對手：</label><input name="opponent"><br>
   <label>我方先攻/先守：</label>
@@ -9,5 +10,5 @@
   <label><input type="radio" name="first_attack" value="D">先守</label><br>
   <button type="submit">開始比賽</button>
 </form>
-<a href="{{ url_for('index') }}">回首頁</a>
+<a class="menu-btn" href="{{ url_for('index') }}">回首頁</a>
 {% endblock %}

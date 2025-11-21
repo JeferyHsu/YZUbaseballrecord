@@ -1,8 +1,9 @@
+import os
 from flask import Flask, render_template, request, redirect, url_for
 from models import db, Player, Game, GameBattingOrder, AtBatStat, DefenseStat
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///baseball.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://yzubaseballdb_user:aXO3IkMltKGlMWG9BA9bW7D2GcZV5nQY@dpg-d4ge6cggjchc73ajr530-a/yzubaseballdb')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'test_secret_key'
 db.init_app(app)
@@ -108,10 +109,11 @@ def index():
 @app.route('/add_game', methods=['GET', 'POST'])
 def add_game():
     if request.method == 'POST':
+        tournament = request.form.get('tournament', '')
         date = request.form['date']
         opponent = request.form['opponent']
         first_attack = request.form['first_attack']
-        game = Game(date=date, opponent=opponent, team_score=0, opponent_score=0, first_attack=first_attack)
+        game = Game(tournament=tournament,date=date, opponent=opponent, team_score=0, opponent_score=0, first_attack=first_attack)
         db.session.add(game)
         db.session.commit()
         return redirect(url_for('set_batting_order', game_id=game.id))
@@ -237,7 +239,7 @@ def record_atbat(game_id, order, inning):
         is_top=(game.first_attack == 'A'),
         outs=outs,
         result_types=result_types,
-        game_id=game_id,
+        game_id=game_id,game=game,
         team_score=game.team_score,
         opponent_score=game.opponent_score,
         opponent=game.opponent)
@@ -336,6 +338,7 @@ def record_defense(game_id, inning):
     curr_pitcher = Player.query.get(curr_pitcher_id) if curr_pitcher_id else None
 
     return render_template('record_defense.html',
+        game=game,
         game_id=game_id, inning=inning,
         pitchers=pitchers, curr_pitcher_id=curr_pitcher_id,curr_pitcher=curr_pitcher,
         last_batter_name=last_batter_name,
@@ -381,9 +384,9 @@ def undo_atbat(game_id, order, inning):
         prev_order = order - 1 if order > 0 else (len(GameBattingOrder.query.filter_by(game_id=game_id).all()) - 1)
         return redirect(url_for('record_atbat', game_id=game_id, order=prev_order, inning=inning))
 
-@app.route('/switch_player/<int:game_id>', methods=['GET', 'POST'])
-def switch_player(game_id):
-    order = request.args.get('order') if request.method == 'GET' else request.form.get('order')
+@app.route('/switch_player/<int:game_id>/<int:order>', methods=['GET', 'POST'])
+def switch_player(game_id,order):
+    #order = request.args.get('order') if request.method == 'GET' else request.form.get('order')
     batting_orders = GameBattingOrder.query.filter_by(game_id=game_id).order_by(GameBattingOrder.order).all()
     all_players = Player.query.all()
     if order is None:
@@ -513,4 +516,4 @@ def finish_record(game_id):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

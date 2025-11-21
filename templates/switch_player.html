@@ -1,18 +1,30 @@
-<form method="post">
+<form method="post" style="max-width:480px; margin:28px auto 0 auto; padding:24px 22px 16px 22px; background:#fff; border-radius:10px; box-shadow:0 2px 7px #e5e5ee;">
     <input type="hidden" name="order" value="{{ order }}">
     {% set curr_gbo = batting_orders[order|int] %}
-    <label>被換下球員 (order: {{ order }})：</label>
-    <select name="old_player" required>
-        <option value="{{ curr_gbo.player.id }}">{{ curr_gbo.player.name }}</option>
-    </select>
-    <label>新上場球員：</label>
-    <select name="new_player" required>
-        {% for p in all_players %}
-            <option value="{{ p.id }}">{{ p.name }}</option>
-        {% endfor %}
-    </select>
-    <button type="submit">確定換人</button>
-
+    <div style="margin-bottom:18px;">
+        <label style="font-weight:600;">被換下球員：</label><br>
+        <select name="old_player" required style="width: 90%; font-size: 1.1em; margin-top:3px;">
+            <option value="{{ curr_gbo.player.id }}">{{ curr_gbo.player.name }}</option>
+        </select>
+    </div>
+    <div style="margin-bottom:18px;">
+        <label style="font-weight:600;">新上場球員：</label><br>
+        <select name="new_player" required style="width: 90%; font-size: 1.1em; margin-top:3px;">
+            {% for p in all_players %}
+                <option value="{{ p.id }}">{{ p.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div style="display:flex; gap:26px;">
+        <button type="submit"
+            style="flex:1; padding:10px 0; font-size:1.1em; border-radius:7px; background:#726bff; color:#fff; border:none; cursor:pointer;">
+            確定換人
+        </button>
+        <button type="button"
+            style="flex:1; padding:10px 0; font-size:1.1em; border-radius:7px; background:#fff; color:#726bff; border:2px solid #726bff; cursor:pointer;"
+            onclick="history.back(); return false;">
+            返回
+        </button>
+    </div>
     <p>DEBUG: 換人按鈕 order={{ order }}，curr_gbo.player.id={{ curr_gbo.player.id }}, curr_gbo.player.name={{ curr_gbo.player.name }}</p>
-
 </form>

@@ -1,9 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>
-比數：{{ game.team_score }} ：{{ game.opponent_score }}<br>
-<span style="font-size:1.2em;">元智大學 vs {{ game.opponent }}</span>
-</h2>
+
+<div style="text-align:center; margin:32px 0 18px 0;">
+  <!-- 賽事名稱美化 -->
+  <div style="font-size:2em; font-weight:700; color:#726bff; margin-bottom:8px; letter-spacing:0.8px;">
+    {{ game.tournament }}
+  </div>
+  <!-- 兩隊名字 -->
+  <div style="font-size:2.1em; font-weight:700; margin-top:12px; letter-spacing:1.5px;">
+    元智大學 <span style="font-size:1em; font-weight:500; color:#686;">vs</span>
+    <span style="font-weight:900; color:#222;">{{ game.opponent }}</span>
+  </div>    
+  <!-- 比數 -->
+  <div style="font-size:2.2em; font-weight:800; letter-spacing:1.5px;">
+    {{ game.team_score }} : {{ game.opponent_score }}
+  </div>
+</div>
+
 <hr>
 
 <h2>{{ game.date }} 的詳細打擊成績</h2>
@@ -154,5 +167,5 @@
     </tr>
 </table>
 
-<a href="{{ url_for('games') }}">返回歷史比賽</a>
+<a class="menu-btn" href="{{ url_for('games') }}">返回歷史比賽</a>
 {% endblock %}

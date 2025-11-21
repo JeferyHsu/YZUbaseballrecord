@@ -4,6 +4,7 @@
 <table border="1" cellpadding="6">
     <tr>
         <th>日期</th>
+        <th>賽事名稱</th>
         <th>對手</th>
         <th>比分</th>
         <th>詳細數據</th>
@@ -11,6 +12,7 @@
     {% for g in games %}
     <tr>
         <td>{{ g.date }}</td>
+        <td>{{ g.tournament }}</td>
         <td>{{ g.opponent }}</td>
         <td>
             {% if g.team_score is not none and g.opponent_score is not none %}
@@ -20,12 +22,15 @@
             {% endif %}
         </td>
         <td>
-            <a href="{{ url_for('game_detail', game_id=g.id) }}">詳細數據</a>
-            <a href="{{ url_for('delete_game', game_id=g.id) }}" onclick="return confirm('確定要刪除這場比賽？');">刪除</a>
+            <a class="menu-btn" href="{{ url_for('game_detail', game_id=g.id) }}" style="margin-right:6px;">詳細數據</a>
+            <a class="menu-btn" href="{{ url_for('delete_game', game_id=g.id) }}"
+                onclick="return confirm('確定要刪除這場比賽？');"
+                style="background:#df4242;">
+                刪除
+            </a>
         </td>
-
     </tr>
     {% endfor %}
 </table>
-<a href="{{ url_for('index') }}">回首頁</a>
+<a class="menu-btn" href="{{ url_for('index') }}">回首頁</a>
 {% endblock %}

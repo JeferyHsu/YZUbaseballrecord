@@ -1,66 +1,129 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>
-    比數：{{ team_score }} ：{{ opponent_score }}<br>
-    <span style="font-size:1.2em;">我方 vs {{ opponent }}</span>
+
+<div style="text-align:center; margin:32px 0 18px 0;">
+  <!-- 賽事名稱美化 -->
+  <div style="font-size:2em; font-weight:700; color:#726bff; margin-bottom:8px; letter-spacing:0.8px;">
+    {{ game.tournament }}
+  </div>
+  <!-- 兩隊名字 -->
+  <div style="font-size:2.1em; font-weight:700; margin-top:12px; letter-spacing:1.5px;">
+    元智大學 <span style="font-size:1em; font-weight:500; color:#686;">vs</span>
+    <span style="font-weight:900; color:#222;">{{ game.opponent }}</span>
+  </div>    
+  <!-- 比數 -->
+  <div style="font-size:2.2em; font-weight:800; letter-spacing:1.5px;">
+    {{ game.team_score }} : {{ game.opponent_score }}
+  </div>
+</div>
+
+<hr style="margin-top:18px;">
+
+<h2 style="text-align:center;">
+  第 {{ inning }} 局{{ '上' if is_top else '下' }}｜出局數：{{ outs }}
 </h2>
-<hr>
-<h2>第 {{ inning }} 局{{ '上' if is_top else '下' }}｜出局數：{{ outs }}</h2>
-<h3>第 {{ order + 1 }} 棒 - {{ batter.name }}</h3>
+<h3 style="text-align:center;">
+  第 {{ order + 1 }} 棒 - {{ batter.name }}
+</h3>
+
+<br>
 <form method="post" id="atbat_form">
-    <label>打擊結果：</label>
-    <select name="result_select" required>
-        {% for r in result_types %}
-        <option value="{{ r }}">{{ r }}</option>
-        {% endfor %}
-    </select>
+  <table style="margin:0 auto;">
+    <tr>
+      <td style="text-align:right;"><label>打擊結果：</label></td>
+      <td>
+        <select name="result_select" required>
+            <option value="三振">三振</option>
+            <option value="四壞">四壞</option>
+            <option value="觸身">觸身</option>
+            <option value="內滾">內滾</option>
+            <option value="內飛">內飛</option>
+            <option value="犧牲">犧牲</option>
+            <option value="外飛">外飛</option>
+            <option value="雙殺">雙殺</option>
+            <option value="內安">內安</option>
+            <option value="一安">一安</option>
+            <option value="二安">二安</option>
+            <option value="三安">三安</option>
+            <option value="全壘">全壘</option>
+            <option value="失誤">失誤</option>
+        </select>
+      </td>
+      <td style="text-align:right;"><label>打點 (RBI)：</label></td>
+      <td>
+        <div class="input-group">
+          <button type="button" onclick="changeInput('rbis', -1)">-</button>
+          <input id="rbis" name="rbis" type="number" min="0" value="0">
+          <button type="button" onclick="changeInput('rbis', 1)">+</button>
+        </div>
+      </td>
+    </tr>
+  </table>
+  <input type="hidden" id="real_result" name="result" value="">
+  <br>
+  <!-- 按鈕群組區塊（整體置中） -->
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 18px; margin-top:40px;">
+    <div style="display: flex; gap: 32px;">
+      <button type="submit"
+        style="padding:12px 32px; font-size:1.1em; border-radius:7px; background:#726bff; color:white; border:none; font-weight:600;"
+        onclick="document.getElementById('real_result').value = document.querySelector('select[name=result_select]').value;">
+        確定送出
+      </button>
+      <button type="button"
+        onclick="document.getElementById('real_result').value = 'RUNNER_OUT'; document.getElementById('atbat_form').submit();"
+        style="padding:12px 32px; font-size:1.1em; border-radius:7px; background:#726bff; color:white; border:none; font-weight:600;">
+        跑者出局
+      </button>
+    </div>
+  </div>
+</form>
 
-    <input type="hidden" name="result" id="real_result" value="">
-
-    <br><br>
-    <label>打點 (RBI)：</label>
-    <input type="number" name="rbis" min="0" value="0">
-    <br><br>
-
-    <button type="submit" onclick="document.getElementById('real_result').value = document.querySelector('select[name=result_select]').value;">確定送出</button>
-    <button type="button" onclick="
-        document.getElementById('real_result').value = 'RUNNER_OUT';
-        document.getElementById('atbat_form').submit();
-    ">跑者出局
+<div style="display:flex; justify-content:center; gap:30px; margin-top:26px;">
+  <form action="{{ url_for('switch_player', game_id=game_id, order=order) }}" style="margin:0;">
+    <button type="submit"
+    style="padding:12px 32px; font-size:1.08em; border-radius:9px; background:#726bff; color:white; border:none; font-weight:600;">
+    球員換人
     </button>
-</form>
-<!-- 球員換人：通常是跳到更換球員頁 -->
-<form action="{{ url_for('switch_player', game_id=game_id, order=order) }}" style="display:inline; margin-right:8px;">
-  <button type="submit">球員換人</button>
-</form>
-
-<!-- 復原上一筆：導向 undo_atbat route -->
-<form action="{{ url_for('undo_atbat', game_id=game_id, order=order, inning=inning) }}" style="display:inline; margin-right:8px;">
-  <button type="submit">復原上一筆</button>
-</form>
-
-<!-- 返回首頁：通常導向 index -->
-<form action="{{ url_for('index') }}" style="display:inline;">
-  <button type="submit">返回首頁</button>
-</form>
-
+  </form>
+  <form action="{{ url_for('index') }}" style="margin:0;">
+    <button type="submit"
+      style="padding:12px 32px; font-size:1.08em; border-radius:9px; background:#726bff; color:white; border:none; font-weight:600;">
+      返回首頁
+    </button>
+  </form>
+  <form action="{{ url_for('finish_record', game_id=game_id) }}" method="post" style="margin:0;">
+    <button type="submit"
+      style="padding:12px 32px; font-size:1.08em; border-radius:9px; background:#2db966; color:white; border:none; font-weight:600;"
+      onclick="return confirm('確定完成紀錄嗎？');">
+      完成紀錄
+    </button>
+  </form>
+</div>
 
 {% if outs >= 3 %}
-    <p style="color:blue;font-weight:bold;">三出局，自動切換介面。</p>
-    <script>
+  <p style="color:blue;font-weight:bold;">三出局，自動切換介面。</p>
+  <script>
     setTimeout(function(){
-        {% if is_top %}
-            window.location = "{{ url_for('record_defense', game_id=game_id, inning=inning, is_top=False) }}";
-        {% else %}
-            window.location = "{{ url_for('record_defense', game_id=game_id, inning=inning+1, is_top=True) }}";
-        {% endif %}
+      {% if is_top %}
+        window.location = "{{ url_for('record_defense', game_id=game_id, inning=inning, is_top=False) }}";
+      {% else %}
+        window.location = "{{ url_for('record_defense', game_id=game_id, inning=inning+1, is_top=True) }}";
+      {% endif %}
     }, 1200)
-    </script>
+  </script>
 {% endif %}
 
-<form action="{{ url_for('finish_record', game_id=game_id) }}" method="post">
-    <button type="submit" style="background:#28a745;color:white;font-size:16px;">完成紀錄</button>
-</form>
+<script>
+function changeInput(id, delta) {
+  let input = document.getElementById(id);
+  let value = parseInt(input.value) || 0;
+  let min = parseInt(input.min) || 0;
+  let max = parseInt(input.max) || 9999;
+  value += delta;
+  if (value < min) value = min;
+  if (value > max) value = max;
+  input.value = value;
+}
+</script>
+
 {% endblock %}
-
-

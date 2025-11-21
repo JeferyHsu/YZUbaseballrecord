@@ -17,7 +17,8 @@ class Game(db.Model):
     current_pitcher_id = db.Column(db.Integer, nullable=True)
     first_attack = db.Column(db.String(1))  # 'A': 先攻, 'D': 先守
     is_recorded = db.Column(db.Boolean, default=False)
-
+    tournament = db.Column(db.String)
+    
 class GameBattingOrder(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=False)

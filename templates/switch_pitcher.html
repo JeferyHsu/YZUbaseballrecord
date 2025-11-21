@@ -1,10 +1,33 @@
-<h2>換投手</h2>
-<form method="post">
-    <label>選擇投手：</label>
-    <select name="pitcher_id">
-        {% for p in pitchers %}
-        <option value="{{ p.id }}">{{ p.name }}</option>
-        {% endfor %}
-    </select>
-    <button type="submit">確認換投手</button>
+<h2 style="text-align:center; margin-bottom:18px;">換投手</h2>
+<form method="post"
+      style="max-width:480px; margin:28px auto 0 auto; padding:24px 22px 18px 22px; background:#fff; border-radius:10px; box-shadow:0 2px 7px #e5e5ee;">
+    <div style="margin-bottom:22px;">
+        <label style="font-weight:700; font-size:1.18em; display:block; margin-bottom:10px;">選擇投手：</label>
+        <select name="pitcher_id"
+            style="
+                width: 96%;
+                font-size: 1.28em;
+                padding: 10px 15px;
+                border-radius: 8px;
+                border: 1.5px solid #ccc;
+                background: #f7f6fc;
+                margin-top: 3px;
+                box-sizing: border-box;
+            ">
+            {% for p in pitchers %}
+                <option value="{{ p.id }}">{{ p.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div style="display:flex; gap:26px;">
+        <button type="submit"
+                style="flex:1; padding:12px 0; font-size:1.12em; border-radius:7px; background:#726bff; color:#fff; border:none; cursor:pointer;">
+            確認換投手
+        </button>
+        <button type="button"
+                onclick="history.back(); return false;"
+                style="flex:1; padding:12px 0; font-size:1.12em; border-radius:7px; background:#fff; color:#726bff; border:2px solid #726bff; cursor:pointer;">
+            返回
+        </button>
+    </div>
 </form>
