@@ -11,7 +11,7 @@
         <label style="font-weight:600;">新上場球員：</label><br>
         <select name="new_player" required style="width: 90%; font-size: 1.1em; margin-top:3px;">
             {% for p in all_players %}
-                <option value="{{ p.id }}">{{ p.name }}</option>
+                <option value="{{ p.id }}">{{ p.number }} - {{ p.name }}</option>
             {% endfor %}
         </select>
     </div>

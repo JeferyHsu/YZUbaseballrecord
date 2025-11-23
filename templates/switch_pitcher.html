@@ -15,7 +15,7 @@
                 box-sizing: border-box;
             ">
             {% for p in pitchers %}
-                <option value="{{ p.id }}">{{ p.name }}</option>
+                <option value="{{ p.id }}">{{ p.number }} - {{ p.name }}</option>
             {% endfor %}
         </select>
     </div>
