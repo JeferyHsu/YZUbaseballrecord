@@ -3,13 +3,31 @@
     {% set curr_gbo = batting_orders[order|int] %}
     <div style="margin-bottom:18px;">
         <label style="font-weight:600;">被換下球員：</label><br>
-        <select name="old_player" required style="width: 90%; font-size: 1.1em; margin-top:3px;">
+        <select name="old_player" required style="
+                width: 96%;
+                font-size: 1.28em;
+                padding: 10px 15px;
+                border-radius: 8px;
+                border: 1.5px solid #ccc;
+                background: #f7f6fc;
+                margin-top: 3px;
+                box-sizing: border-box;
+            ">
             <option value="{{ curr_gbo.player.id }}">{{ curr_gbo.player.name }}</option>
         </select>
     </div>
     <div style="margin-bottom:18px;">
         <label style="font-weight:600;">新上場球員：</label><br>
-        <select name="new_player" required style="width: 90%; font-size: 1.1em; margin-top:3px;">
+        <select name="new_player" required style="
+                width: 96%;
+                font-size: 1.28em;
+                padding: 10px 15px;
+                border-radius: 8px;
+                border: 1.5px solid #ccc;
+                background: #f7f6fc;
+                margin-top: 3px;
+                box-sizing: border-box;
+            ">
             {% for p in all_players %}
                 <option value="{{ p.id }}">{{ p.number }} - {{ p.name }}</option>
             {% endfor %}
@@ -26,5 +44,4 @@
             返回
         </button>
     </div>
-    <p>DEBUG: 換人按鈕 order={{ order }}，curr_gbo.player.id={{ curr_gbo.player.id }}, curr_gbo.player.name={{ curr_gbo.player.name }}</p>
 </form>
