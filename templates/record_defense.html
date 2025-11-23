@@ -23,7 +23,10 @@
     第 {{ inning }} 局{{ '上' if is_top else '下' }}｜出局數：{{ outs }}
 </h2>
 <h3 style="text-align:center;">
-    目前投手：{{ curr_pitcher.name if curr_pitcher else '未指定' }}
+    目前投手：
+</h3>
+<h3 style="text-align:center;">
+    {{ curr_pitcher.number if curr_pitcher else '?' }} - {{ curr_pitcher.name if curr_pitcher else '未指定' }}
 </h3>
 
 <br>
