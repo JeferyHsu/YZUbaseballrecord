@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for
 from models import db, Player, Game, GameBattingOrder, AtBatStat, DefenseStat
 
 app = Flask(__name__)
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///baseball.db'
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'test_secret_key'
@@ -194,13 +195,17 @@ def record_atbat(game_id, order, inning):
     total = len(batting_orders)
     if total == 0:
         return "請先設定棒次順序"
-    # 使用current_batter_count計算order
-    current_batter_count = game.current_batter_count or 0
-    order = current_batter_count % total
+    game = Game.query.get_or_404(game_id) 
+
+    # 優先使用 game.next_batter_order（確保跨局延續）
+    if game.next_batter_order is not None:
+        order = game.next_batter_order
+    else:
+        order = int(order)  
+
     inning = int(inning)
     current_batter = batting_orders[order]
     result_types = ['三振', '不死三振', '四壞', '觸身', '內安', '一安', '二安', '三安', '全壘', '失誤', '雙殺', '犧牲', '外飛', '內滾', '內飛', 'RUNNER_OUT']
-    game = Game.query.get_or_404(game_id)
     outs = calculate_outs(game_id, inning)
     if request.method == 'POST':
         selected_result = request.form['result']
@@ -222,10 +227,17 @@ def record_atbat(game_id, order, inning):
             game.team_score = (game.team_score or 0) + rbis
         db.session.commit()
         outs = calculate_outs(game_id, inning)
+
         if selected_result == 'RUNNER_OUT':
         # 出局數+1，但不換下個打者
         # 直接重新顯示同一order和inning的頁面
             return redirect(url_for('record_atbat', game_id=game_id, order=order, inning=inning))
+        
+        # 這個打席結束後「下一棒」
+        next_order = (order + 1) % total
+        game.next_batter_order = next_order
+        db.session.commit()
+
         if outs >= 3:
             if game.first_attack == 'A':
                 # 先攻隊伍，進攻結束換防守，同局下半
@@ -233,7 +245,8 @@ def record_atbat(game_id, order, inning):
             else:
                 # 先守隊伍，進攻結束進入下一局上半防守
                 return redirect(url_for('record_defense', game_id=game_id, inning=inning+1))
-        return redirect(url_for('record_atbat', game_id=game_id, order=(order+1)%total, inning=inning))
+        # 未三出局：同局下一棒
+        return redirect(url_for('record_atbat', game_id=game_id, order=next_order, inning=inning))
     return render_template('record_atbat.html',
         batter=current_batter.player,
         order=order,
@@ -296,9 +309,9 @@ def record_defense(game_id, inning):
         # 三出局跳轉，確保只有POST時觸發
         if outs >= 3:
             if game.first_attack == 'A':
-                return redirect(url_for('record_atbat', game_id=game_id, order=0, inning=inning+1, pitcher_id=curr_pitcher_id))
+                return redirect(url_for('record_atbat', game_id=game_id, order=game.next_batter_order or 0, inning=inning+1, pitcher_id=curr_pitcher_id))
             else:
-                return redirect(url_for('record_atbat', game_id=game_id, order=0, inning=inning, pitcher_id=curr_pitcher_id))
+                return redirect(url_for('record_atbat', game_id=game_id, order=game.next_batter_order or 0, inning=inning, pitcher_id=curr_pitcher_id))
 
         # 其他情況續留防守頁面
         return redirect(url_for('record_defense', game_id=game_id, inning=inning, pitcher_id=curr_pitcher_id))
@@ -518,4 +531,5 @@ def finish_record(game_id):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+#    app.run(debug=True)        
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
