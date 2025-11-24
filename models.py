@@ -18,6 +18,7 @@ class Game(db.Model):
     first_attack = db.Column(db.String(1))  # 'A': 先攻, 'D': 先守
     is_recorded = db.Column(db.Boolean, default=False)
     tournament = db.Column(db.String)
+    current_batter_count = db.Column(db.Integer, default=0)
     
 class GameBattingOrder(db.Model):
     id = db.Column(db.Integer, primary_key=True)

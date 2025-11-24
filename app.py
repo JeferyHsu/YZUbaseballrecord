@@ -194,8 +194,9 @@ def record_atbat(game_id, order, inning):
     total = len(batting_orders)
     if total == 0:
         return "請先設定棒次順序"
-    team_atbats_count = AtBatStat.query.filter_by(game_id=game_id, is_team=True).count()
-    order = team_atbats_count % total
+    # 使用current_batter_count計算order
+    current_batter_count = game.current_batter_count or 0
+    order = current_batter_count % total
     inning = int(inning)
     current_batter = batting_orders[order]
     result_types = ['三振', '不死三振', '四壞', '觸身', '內安', '一安', '二安', '三安', '全壘', '失誤', '雙殺', '犧牲', '外飛', '內滾', '內飛', 'RUNNER_OUT']
