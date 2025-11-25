@@ -724,6 +724,10 @@ def export_game_excel(game_id):
     for col in ws2.columns:
         col_letter = col[0].column_letter
         ws2.column_dimensions[col_letter].width = 18   # 可以設 16~22
+
+    for col in ws3.columns:
+        col_letter = col[0].column_letter
+        ws3.column_dimensions[col_letter].width = 15   # 可以設 16~22
     # 回傳檔案
     output = BytesIO()
     wb.save(output)
