@@ -23,6 +23,7 @@
         </td>
         <td>
             <a class="menu-btn" href="{{ url_for('game_detail', game_id=g.id) }}" style="margin-right:6px;">詳細數據</a>
+            <a href="{{ url_for('export_game_excel', game_id=g.id) }}" class="menu-btn">📊 下載 Excel</a>
             <a class="menu-btn" href="{{ url_for('delete_game', game_id=g.id) }}"
                 onclick="return confirm('確定要刪除這場比賽？');"
                 style="background:#df4242;">

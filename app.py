@@ -1,6 +1,9 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_file
 from models import db, Player, Game, GameBattingOrder, AtBatStat, DefenseStat
+from io import BytesIO
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment
 
 app = Flask(__name__)
 #app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///baseball.db'
@@ -549,6 +552,188 @@ def game_detail(game_id):
         opponent_hits=opponent_hits,
         team_errors=team_errors,
         opponent_errors=opponent_errors,
+    )
+
+@app.route('/export_game_excel/<int:game_id>')
+def export_game_excel(game_id):
+    game = Game.query.get_or_404(game_id)
+    stats_table, max_inning, total = get_stats_table(game_id)
+    defense_stats = DefenseStat.query.filter_by(game_id=game_id).order_by(DefenseStat.inning, DefenseStat.id).all()
+    
+    # 準備資料（同 game_detail 路由）
+    team_scores_per_inning = [0] * max_inning
+    opponent_scores_per_inning = [0] * max_inning
+    for i in range(1, max_inning+1):
+        team_scores_per_inning[i-1] = sum(
+            ab.rbis or 0 for ab in AtBatStat.query.filter_by(game_id=game_id, inning=i).all()
+        )
+        opponent_scores_per_inning[i-1] = sum(
+            ds.runs or 0 for ds in DefenseStat.query.filter_by(game_id=game_id, inning=i).all()
+        )
+    team_hits = sum(
+        ab.result in ['內安','一安','二安','三安','全壘'] for ab in AtBatStat.query.filter_by(game_id=game_id).all()
+    )
+    opponent_hits = sum(
+        ds.result in ['內安','一安','二安','三安','全壘'] for ds in DefenseStat.query.filter_by(game_id=game_id).all()
+    )
+    team_errors = sum(
+        ab.result == '失誤' for ab in AtBatStat.query.filter_by(game_id=game_id).all()
+    )
+    opponent_errors = sum(
+        ds.result == '失誤' for ds in DefenseStat.query.filter_by(game_id=game_id).all()
+    )
+    
+    defense_records = []
+    for r in defense_stats:
+        pitcher = Player.query.get(r.pitcher_id) if r.pitcher_id else None
+        defense_records.append({
+            "inning": r.inning,
+            "pitcher": pitcher,
+            "batter_name": r.batter_name,
+            "strike": r.strike,
+            "ball": r.ball,
+            "pitch_count": r.pitch_count,
+            "result": r.result
+        })
+    
+    pitcher_stats, pitcher_total = calculate_pitcher_stats(game_id)
+    pitchers = {r.pitcher_id: Player.query.get(r.pitcher_id).name for r in defense_stats if r.pitcher_id}
+    innings = sorted(set([r.inning for r in defense_stats]))
+    pitcher_inning_data = []
+    for pid, pname in pitchers.items():
+        per_inning = []
+        for inn in innings:
+            count = sum(r.pitch_count for r in defense_stats if r.pitcher_id == pid and r.inning == inn)
+            per_inning.append(count if count != 0 else "")
+        pitcher_inning_data.append({
+            "name": pname,
+            "data": per_inning
+        })
+    
+    def format_ws(ws):
+        for row in ws.iter_rows():
+            for cell in row:
+                cell.font = Font(size=14)  # 想再大可設 16
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+        for column in ws.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            ws.column_dimensions[column_letter].width = min(max_length + 6, 30) # 調整大一點
+        ws.row_dimensions[1].height = 28   # 第一列標題高度也可加高
+
+    # 建立 Workbook
+    wb = Workbook()
+    wb.remove(wb.active)  # 移除預設的 sheet
+    
+    # ===== Sheet 1: 比分表 =====
+    ws1 = wb.create_sheet("比分表")
+    ws1.append(['', *[str(i) for i in range(1, max_inning+1)], 'R', 'H', 'E'])
+    ws1.append(['元智大學', *team_scores_per_inning, game.team_score, team_hits, team_errors])
+    ws1.append([game.opponent, *opponent_scores_per_inning, game.opponent_score, opponent_hits, opponent_errors])
+
+    # ===== Sheet 2: 打擊成績 =====
+    ws2 = wb.create_sheet("打擊成績")
+    headers = ['棒次', '球員'] + [f'第{i}局' for i in range(1, max_inning+1)] + ['打數', '安打', '全壘打', '打點', '得分', '打擊率']
+    ws2.append(headers)
+    
+    for row in stats_table:
+        ws2.append([
+            row['order']+1,
+            row['player'].name,
+            *row['results'],
+            row['ab'], row['hit'], row['hr'], row['rbi'],
+            row.get('run', 0),
+            "%.3f" % (row['hit']/row['ab'] if row['ab'] else 0.0)
+        ])
+    
+    # 總計行
+    ws2.append(['總計', ''] + total.get('inning_results', [0]*max_inning) +
+              [total['ab'], total['hit'], total['hr'], total['rbi'], total.get('run', 0),
+               "%.3f" % (total['hit']/total['ab'] if total['ab'] else 0.0)])
+    
+    # ===== Sheet 3: 投手成績 =====
+    ws3 = wb.create_sheet("投手成績")
+    ws3.append(['投手', '投球局數', '面對打席', '投球數', '好球數', '安打', '全壘打', '四壞', '觸身', '三振', '失分'])
+    
+    for p in pitcher_stats:
+        ws3.append([
+            p['name'], p['ip'], p['batters'], p['pitch_count'], p['strikes'],
+            p['hits'], p['hr'], p['bb'], p['hbp'], p['k'], p['run']
+        ])
+    
+    ws3.append([
+        '總計', pitcher_total['ip'], pitcher_total['batters'], pitcher_total['pitch_count'],
+        pitcher_total['strikes'], pitcher_total['hits'], pitcher_total['hr'],
+        pitcher_total['bb'], pitcher_total['hbp'], pitcher_total['k'], pitcher_total['run']
+    ])
+    
+    # ===== Sheet 4: 投手每局用球數 =====
+    ws4 = wb.create_sheet("投手每局用球數")
+    ws4.append(['投手'] + [f'第{inn}局' for inn in innings])
+    
+    for pitcher in pitcher_inning_data:
+        ws4.append([pitcher['name']] + pitcher['data'])
+    
+    # ===== Sheet 5: 防守打席紀錄 =====
+    ws5 = wb.create_sheet("防守打席紀錄")
+    ws5.append(['局數', '投手', '對方打者', '好球', '壞球', '球數', '結果'])
+    
+    for d in defense_records:
+        result = '跑者出局' if d['result'] == 'RUNNER_OUT' else d['result']
+        ws5.append([
+            d['inning'],
+            d['pitcher'].name if d['pitcher'] else '',
+            d['batter_name'],
+            d['strike'],
+            d['ball'],
+            d['pitch_count'],
+            result
+        ])
+    
+    # 防守總計行
+    ws5.append([
+        '總計', '', '',
+        sum(d['strike'] for d in defense_records),
+        sum(d['ball'] for d in defense_records),
+        sum(d['pitch_count'] for d in defense_records),
+        '-'
+    ])
+    
+    # 寬度調整（方便閱讀）
+    for ws in [ws1, ws2, ws3, ws4, ws5]:
+        for column in ws.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+    
+    # 加在 append資料後、回傳前
+    for ws in [ws1, ws2, ws3, ws4, ws5]:
+        format_ws(ws)
+
+    ws1.column_dimensions['A'].width = 22  # 這一行放在 for loop後或前都可以
+    for col in ws2.columns:
+        col_letter = col[0].column_letter
+        ws2.column_dimensions[col_letter].width = 18   # 可以設 16~22
+    # 回傳檔案
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'{game.tournament} vs {game.opponent}.xlsx'
     )
 
 @app.route('/record_match_select')

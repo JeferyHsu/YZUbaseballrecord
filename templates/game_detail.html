@@ -165,6 +165,20 @@
         {% endfor %}
     </tr>
     {% endfor %}
+    <tr style="background-color:#fdf4dc;font-weight:bold;">
+    <td>總計</td>
+        {% for i in range(pitcher_innings|length) %}
+            <td>
+                {{
+                    pitcher_inning_data
+                    | map(attribute='data')
+                    | map(attribute=i)
+                    | map('int')
+                    | sum
+                }}
+            </td>
+        {% endfor %}
+    </tr>
 </table>
 
 <hr>
