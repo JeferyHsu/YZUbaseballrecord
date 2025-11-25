@@ -168,7 +168,7 @@
     <tr style="background-color:#fdf4dc;font-weight:bold;">
     <td style="background-color:#fdf4dc;font-weight:bold;">總計</td>
         {% for i in range(pitcher_innings|length) %}
-            <td>
+            <td style="background-color:#fdf4dc;font-weight:bold;">
                 {{
                     pitcher_inning_data
                     | map(attribute='data')
