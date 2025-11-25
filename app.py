@@ -6,8 +6,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///baseball.db'
-#app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///baseball.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'test_secret_key'
 db.init_app(app)
@@ -761,5 +761,5 @@ def finish_record(game_id):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True)        
-#    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+#    app.run(debug=True)        
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
