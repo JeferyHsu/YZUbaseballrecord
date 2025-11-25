@@ -17,68 +17,101 @@
   </div>
 </div>
 
-<hr>
-
-<h2>{{ game.date }} 的詳細打擊成績</h2>
-<table border="1" cellpadding="4">
+<table border="1" style="border-collapse: collapse;">
     <tr>
-        <th>棒次</th>
-        <th>球員</th>
-        {% for inning in range(1, max_inning+1) %}
-            <th>{{ inning }}</th>
+        <th></th>
+        {% for i in range(1, max_inning+1) %}
+            <th>{{ i }}</th>
         {% endfor %}
-        <th>打數</th>
-        <th>安打</th>
-        <th>全壘打</th>
-        <th>打點</th>
-        <th>得分</th>
-        <th>打擊率</th>
+        <th>R</th>
+        <th>H</th>
+        <th>E</th>
     </tr>
-    {# 取得所有有出場的棒次(order)後分棒次分群 #}
-    {% set orders = stats_table | map(attribute='order') | reject('equalto', "") | list | unique | sort %}
-    {% for order in orders %}
-        {% set group = stats_table | selectattr('order', 'equalto', order) | list %}
-        {% for row in group %}
-        <tr>
-            <td>{% if loop.index0 == 0 %}{{ order + 1 }}{% endif %}</td>
-            <td>{{ row.player.name }}<i>
-                {% if row.note %}, {{ row.note }}{% endif %}
-                {% if row.position %}, {{ row.position }}{% endif %}
-            </i></td>
-            {% for r in row.results %}
-                <td>{{ r }}</td>
-            {% endfor %}
-            <td>{{ row.ab }}</td>
-            <td>{{ row.hit }}</td>
-            <td>{{ row.hr }}</td>
-            <td>{{ row.rbi }}</td>
-            <td>{{ row.run if row.run is defined else 0 }}</td>
-            <td>
-                {% if row.ab %}
-                    {{ "%.3f" | format(row.hit / row.ab) }}
-                {% else %}
-                    0.000
-                {% endif %}
-            </td>
-        </tr>
+    <tr>
+        <td style="font-weight:bold;">元智大學</td>
+        {% for s in team_scores_per_inning %}
+            <td>{{ s }}</td>
         {% endfor %}
-    {% endfor %}
-    <tr style="background: #fff2d3;">
-        <td>總計</td>
-        <td></td>
-        {% for t in total.inning_results %}
-            <td>{{ t }}</td>
+        <td>{{ game.team_score }}</td>
+        <td>{{ team_hits }}</td>
+        <td>{{ team_errors }}</td>
+    </tr>
+    <tr>
+        <td style="font-weight:bold;">{{ game.opponent }}</td>
+        {% for s in opponent_scores_per_inning %}
+            <td>{{ s }}</td>
         {% endfor %}
-        <td>{{ total.ab }}</td>
-        <td>{{ total.hit }}</td>
-        <td>{{ total.hr }}</td>
-        <td>{{ total.rbi }}</td>
-        <td>{{ total.run if total.run is defined else 0 }}</td>
-        <td>{{ "%.3f" | format(total.hit/total.ab)}}</td>
+        <td>{{ game.opponent_score }}</td>
+        <td>{{ opponent_hits }}</td>
+        <td>{{ opponent_errors }}</td>
     </tr>
 </table>
+
 <hr>
-<h2>投手成績</h2>
+
+<h2 style="text-align:center;">打擊成績</h2>
+<div class="table-scroll">
+    <table border="1" cellpadding="4">
+        <tr>
+            <th>棒次</th>
+            <th>球員</th>
+            {% for inning in range(1, max_inning+1) %}
+                <th>{{ inning }}</th>
+            {% endfor %}
+            <th>打數</th>
+            <th>安打</th>
+            <th>全壘打</th>
+            <th>打點</th>
+            <th>得分</th>
+            <th>打擊率</th>
+        </tr>
+        {# 取得所有有出場的棒次(order)後分棒次分群 #}
+        {% set orders = stats_table | map(attribute='order') | reject('equalto', "") | list | unique | sort %}
+        {% for order in orders %}
+            {% set group = stats_table | selectattr('order', 'equalto', order) | list %}
+            {% for row in group %}
+            <tr>
+                <td>{% if loop.index0 == 0 %}{{ order + 1 }}{% endif %}</td>
+                <td style="white-space: nowrap;">{{ row.player.name }}<i>
+                    {% if row.note %}, {{ row.note }}{% endif %}
+                    {% if row.position %}, {{ row.position }}{% endif %}
+                </i></td>
+                {% for r in row.results %}
+                    <td>{{ r }}</td>
+                {% endfor %}
+                <td>{{ row.ab }}</td>
+                <td>{{ row.hit }}</td>
+                <td>{{ row.hr }}</td>
+                <td>{{ row.rbi }}</td>
+                <td>{{ row.run if row.run is defined else 0 }}</td>
+                <td>
+                    {% if row.ab %}
+                        {{ "%.3f" | format(row.hit / row.ab) }}
+                    {% else %}
+                        0.000
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        {% endfor %}
+        <tr style="background-color:#fdf4dc;font-weight:bold;">
+            <td style="background-color:#fdf4dc;font-weight:bold;">總計</td>
+            <td style="background-color:#fdf4dc;font-weight:bold;"></td>
+            {% for t in total.inning_results %}
+                <td style="background-color:#fdf4dc;font-weight:bold;">{{ t }}</td>
+            {% endfor %}
+            <td style="background-color:#fdf4dc;font-weight:bold;">{{ total.ab }}</td>
+            <td style="background-color:#fdf4dc;font-weight:bold;">{{ total.hit }}</td>
+            <td style="background-color:#fdf4dc;font-weight:bold;">{{ total.hr }}</td>
+            <td style="background-color:#fdf4dc;font-weight:bold;">{{ total.rbi }}</td>
+            <td style="background-color:#fdf4dc;font-weight:bold;">{{ total.run if total.run is defined else 0 }}</td>
+            <td style="background-color:#fdf4dc;font-weight:bold;">{{ "%.3f" | format(total.hit/total.ab)}}</td>
+        </tr>
+    </table>
+</div>
+<hr>
+
+<h2 style="text-align:center;">投手成績</h2>
 <table border="1" style="border-collapse: collapse;">
   <tr>
     <th>投手</th><th>投球局數</th><th>面對打席</th><th>投球數</th><th>好球數</th>
@@ -86,7 +119,7 @@
   </tr>
   {% for p in pitcher_stats %}
   <tr>
-    <td>{{ p.name }}</td>
+    <td style="white-space: nowrap;">{{ p.name }}</td>
     <td>{{ p.ip }}</td>
     <td>{{ p.batters }}</td>
     <td>{{ p.pitch_count }}</td>
@@ -99,22 +132,24 @@
     <td>{{ p.run }}</td>
   </tr>
   {% endfor %}
-  <tr style="background-color:#fdf4dc;font-weight:bold;">
-    <td>總計</td>
-    <td>{{ pitcher_total.ip }}</td>
-    <td>{{ pitcher_total.batters }}</td>
-    <td>{{ pitcher_total.pitch_count }}</td>
-    <td>{{ pitcher_total.strikes }}</td>
-    <td>{{ pitcher_total.hits }}</td>
-    <td>{{ pitcher_total.hr }}</td>
-    <td>{{ pitcher_total.bb }}</td>
-    <td>{{ pitcher_total.hbp }}</td>
-    <td>{{ pitcher_total.k }}</td>
-    <td>{{ pitcher_total.run }}</td>
+  <tr>
+    <td style="background-color:#fdf4dc;font-weight:bold;">總計</td>
+    <td style="background-color:#fdf4dc;font-weight:bold;">{{ pitcher_total.ip }}</td>
+    <td style="background-color:#fdf4dc;font-weight:bold;">{{ pitcher_total.batters }}</td>
+    <td style="background-color:#fdf4dc;font-weight:bold;">{{ pitcher_total.pitch_count }}</td>
+    <td style="background-color:#fdf4dc;font-weight:bold;">{{ pitcher_total.strikes }}</td>
+    <td style="background-color:#fdf4dc;font-weight:bold;">{{ pitcher_total.hits }}</td>
+    <td style="background-color:#fdf4dc;font-weight:bold;">{{ pitcher_total.hr }}</td>
+    <td style="background-color:#fdf4dc;font-weight:bold;">{{ pitcher_total.bb }}</td>
+    <td style="background-color:#fdf4dc;font-weight:bold;">{{ pitcher_total.hbp }}</td>
+    <td style="background-color:#fdf4dc;font-weight:bold;">{{ pitcher_total.k }}</td>
+    <td style="background-color:#fdf4dc;font-weight:bold;">{{ pitcher_total.run }}</td>
   </tr>
 </table>
 
-<h2>投手每局用球數</h2>
+<hr>
+
+<h2 style="text-align:center;">投手每局用球數</h2>
 <table border="1">
     <tr>
         <th>投手</th>
@@ -132,7 +167,9 @@
     {% endfor %}
 </table>
 
-<h2>防守打席紀錄</h2>
+<hr>
+
+<h2 style="text-align:center;">防守打席紀錄</h2>
 <table border="1" style="border-collapse: collapse;">
     <tr>
       <th>局數</th>
@@ -161,7 +198,9 @@
     </tr>
     {% endfor %}
     <tr style="background-color:#fdf4dc;font-weight:bold;">
-      <td colspan="5">總計</td>
+      <td colspan="3">總計</td>
+      <td>{{ defense_records | sum(attribute='strike') }}</td>
+      <td>{{ defense_records | sum(attribute='ball') }}</td>
       <td>{{ defense_records | sum(attribute='pitch_count') }}</td>
       <td>-</td>
     </tr>

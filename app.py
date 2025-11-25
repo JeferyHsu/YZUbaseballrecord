@@ -473,8 +473,37 @@ def get_stats_table(game_id):
 def game_detail(game_id):
     game = Game.query.get_or_404(game_id)
     stats_table, max_inning, total = get_stats_table(game_id)      # 打擊數據用
-
     defense_stats = DefenseStat.query.filter_by(game_id=game_id).order_by(DefenseStat.inning, DefenseStat.id).all()
+    
+    # ====== 新增: 比分表的資料 =======
+    # 我方每局得分
+    team_scores_per_inning = [0] * max_inning
+    # 對方每局得分
+    opponent_scores_per_inning = [0] * max_inning
+
+    for i in range(1, max_inning+1):
+        # 本隊RBIs
+        team_scores_per_inning[i-1] = sum(
+            ab.rbis or 0 for ab in AtBatStat.query.filter_by(game_id=game_id, inning=i).all()
+        )
+        # 對手在這局得分
+        opponent_scores_per_inning[i-1] = sum(
+            ds.runs or 0 for ds in DefenseStat.query.filter_by(game_id=game_id, inning=i).all()
+        )
+
+    team_hits = sum(
+        ab.result in ['內安','一安','二安','三安','全壘'] for ab in AtBatStat.query.filter_by(game_id=game_id).all()
+    )
+    opponent_hits = sum(
+        ds.result in ['內安','一安','二安','三安','全壘'] for ds in DefenseStat.query.filter_by(game_id=game_id).all()
+    )
+    team_errors = sum(
+        ab.result == '失誤' for ab in AtBatStat.query.filter_by(game_id=game_id).all()
+    )
+    opponent_errors = sum(
+        ds.result == '失誤' for ds in DefenseStat.query.filter_by(game_id=game_id).all()
+    )
+    
     defense_records = []
     for r in defense_stats:
         pitcher = Player.query.get(r.pitcher_id) if r.pitcher_id else None
@@ -513,7 +542,13 @@ def game_detail(game_id):
         pitcher_stats=pitcher_stats,
         pitcher_total=pitcher_total,  # for 投手
         pitcher_innings=innings,      # 表頭局數
-        pitcher_inning_data=pitcher_inning_data  # 表格內容
+        pitcher_inning_data=pitcher_inning_data,  # 表格內容
+        team_scores_per_inning=team_scores_per_inning,
+        opponent_scores_per_inning=opponent_scores_per_inning,
+        team_hits=team_hits,
+        opponent_hits=opponent_hits,
+        team_errors=team_errors,
+        opponent_errors=opponent_errors,
     )
 
 @app.route('/record_match_select')
@@ -533,6 +568,3 @@ if __name__ == '__main__':
         db.create_all()
 #    app.run(debug=True)        
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-
-with app.app_context():
-     db.create_all()
