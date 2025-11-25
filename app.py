@@ -6,8 +6,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
 
 app = Flask(__name__)
-#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///baseball.db'
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///baseball.db'
+#app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'test_secret_key'
 db.init_app(app)
@@ -676,7 +676,13 @@ def export_game_excel(game_id):
     
     for pitcher in pitcher_inning_data:
         ws4.append([pitcher['name']] + pitcher['data'])
-    
+    # 加總計行到 ws4
+    totals = []
+    for i in range(len(innings)):
+        # 取所有投手的某局用球數，如果不是數字（空字串），轉成0
+        values = [(int(p['data'][i]) if str(p['data'][i]).isdigit() else 0) for p in pitcher_inning_data]
+        totals.append(sum(values))
+    ws4.append(['總計'] + totals)
     # ===== Sheet 5: 防守打席紀錄 =====
     ws5 = wb.create_sheet("防守打席紀錄")
     ws5.append(['局數', '投手', '對方打者', '好球', '壞球', '球數', '結果'])
@@ -755,5 +761,5 @@ def finish_record(game_id):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-#    app.run(debug=True)        
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(debug=True)        
+#    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
