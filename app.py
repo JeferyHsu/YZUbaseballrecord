@@ -6,8 +6,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///baseball.db'
-#app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///baseball.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'test_secret_key'
 db.init_app(app)
@@ -50,7 +50,8 @@ def calculate_pitcher_stats(game_id):
                 'run': 0
             }
         if rec.result != 'RUNNER_OUT':
-            pitcher_groups[pid]['batters'] += 1
+            if rec.result not in ['防守失誤', '暴投']:
+                pitcher_groups[pid]['batters'] += 1
         pitcher_groups[pid]['pitch_count'] += rec.pitch_count
         pitcher_groups[pid]['strikes'] += rec.strike
         pitcher_groups[pid]['run'] += rec.runs
@@ -219,28 +220,25 @@ def record_atbat(game_id, order, inning):
         position = request.form.get('position', '')
         note = request.form.get('note', '')
 
-        if selected_result == '對手失誤':
+        if selected_result in ['對手失誤', '暴投']:
             runs = int(request.form.get('runs', 0))
             game.team_score = (game.team_score or 0) + runs
-            # 新增一筆 DefenseStat，代表本局的'失誤'
-            defense_stat = DefenseStat(
+            
+            # 建立進攻紀錄 (只建立這個！)
+            # 將分數記在 note 欄位，讓 game_detail 可以讀取並加總我方得分
+            atbat = AtBatStat(
                 game_id=game_id,
+                player_id=current_batter.player_id,
+                order=current_batter.order,
+                result=selected_result,
                 inning=inning,
-                pitcher_id=None,         # 可設 None 或 0，因為不是針對某個你方投手
-                batter_name='',
-                strike=0,
-                ball=0,
-                pitch_count=0,
-                result='失誤',
-                runs=0                   # 這裡記失誤，但不在這筆加分數
+                rbis=0,
+                note=str(runs) 
             )
-            db.session.add(defense_stat)
-            db.session.commit()
-            return redirect(url_for('record_atbat', game_id=game_id, order=order, inning=inning))
+            db.session.add(atbat)
 
-        if selected_result == '暴投':
-            runs = int(request.form.get('runs', 0))
-            game.team_score = (game.team_score or 0) + runs
+            # 因為 DefenseStat 是用來算 "對手得分" 的，進攻時不能加！
+            
             db.session.commit()
             return redirect(url_for('record_atbat', game_id=game_id, order=order, inning=inning))
         
@@ -332,7 +330,7 @@ def record_defense(game_id, inning):
                 game_id=game_id, inning=inning,
                 pitcher_id=curr_pitcher_id, batter_name=batter_name,
                 strike=strike, ball=ball,
-                pitch_count=pitch_count, result='失誤',
+                pitch_count=pitch_count, result='防守失誤',
                 runs=runs
             )
             db.session.add(stat)
@@ -504,7 +502,8 @@ def switch_pitcher(game_id, inning):
 
 def get_stats_table(game_id):
     atbats = [ab for ab in AtBatStat.query.filter_by(game_id=game_id).all() 
-        if not (ab.order == -1 and ab.note == '防守失誤')]
+        if not (ab.order == -1 and ab.note == '防守失誤') 
+        and ab.result not in ['對手失誤', '暴投']]
     innings = sorted(set([a.inning for a in atbats]))
     max_inning = max(innings) if innings else 9
     groups = {}
@@ -517,7 +516,7 @@ def get_stats_table(game_id):
             groups[key] = {
                 "order": ab.order,
                 "player": Player.query.get(ab.player_id),
-                "note": ab.note or "",
+                "note":"",
                 "position": ab.position or "",
                 "results": [""] * max_inning,
                 "ab": 0, "hit": 0, "hr": 0, "rbi": 0
@@ -552,21 +551,26 @@ def game_detail(game_id):
     opponent_scores_per_inning = [0] * max_inning
 
     for i in range(1, max_inning+1):
-        # 本隊RBIs
+        # 本隊 RBIs (原本的邏輯)
         rbi_runs = sum(
             ab.rbis or 0 for ab in AtBatStat.query.filter_by(game_id=game_id, inning=i).all()
         )
-        # 對手失誤造成的額外得分（record_atbat 裡 selected_result == '對手失誤' 時填的 runs）
+        
+        # ★修正這裡：同時計算 '對手失誤' 和 '暴投' 的得分
+        # (讀取我們剛剛存在 note 裡面的分數)
         error_extra_runs = sum(
-            int(ab.note) if ab.note and ab.result == '對手失誤' else 0
+            int(ab.note) if ab.note and ab.result in ['對手失誤', '暴投'] else 0
             for ab in AtBatStat.query.filter_by(game_id=game_id, inning=i).all()
         )
+        
         team_scores_per_inning[i-1] = rbi_runs + error_extra_runs
 
-        # 對手在這局得分
         opponent_scores_per_inning[i-1] = sum(
-            ds.runs or 0 for ds in DefenseStat.query.filter_by(game_id=game_id, inning=i).all()
+            ds.runs or 0
+            for ds in DefenseStat.query.filter_by(game_id=game_id, inning=i).all()
         )
+
+
 
     team_hits = sum(
         ab.result in ['內安','一安','二安','三安','全壘'] for ab in AtBatStat.query.filter_by(game_id=game_id).all()
@@ -574,28 +578,25 @@ def game_detail(game_id):
     opponent_hits = sum(
         ds.result in ['內安','一安','二安','三安','全壘'] for ds in DefenseStat.query.filter_by(game_id=game_id).all()
     )
-    # 我方失誤：敵方打擊時「自己失誤」留下的 DefenseStat (pitcher_id有值) + AtBatStat note='防守失誤'
+    # 我方失誤 = '失誤'(下拉選單) + '防守失誤'(按鈕)
     team_errors = sum(
-        1
-        for ds in DefenseStat.query.filter_by(game_id=game_id, result='失誤').all()
-        if ds.pitcher_id is not None
+        1 for ds in DefenseStat.query.filter_by(game_id=game_id).all() 
+        if ds.result in ['失誤', '防守失誤']  # <--- 關鍵！一定要兩個都有
     )
-    opponent_errors = (
-        sum(
-            1
-            for ab in AtBatStat.query.filter_by(game_id=game_id).all()
-            if ab.result == '失誤' and (ab.note is None or ab.note != '防守失誤')
-        )
-        +
-        sum(
-            1
-            for ds in DefenseStat.query.filter_by(game_id=game_id, result='失誤').all()
-            if ds.pitcher_id is None
-        )
+
+    # 對手失誤：我在進攻時(AtBatStat)造成的 '對手失誤' + 下拉選單選的 '失誤'
+    opponent_errors = sum(
+        1 for ab in AtBatStat.query.filter_by(game_id=game_id).all()
+        if ab.result in ['失誤', '對手失誤']  # <--- 這裡加了 '對手失誤'
+        and (ab.note != '防守失誤') # 排除掉自己防守時的註記
     )
 
     defense_records = []
     for r in defense_stats:
+        # 如果是 '防守失誤' (按鈕) 或 '暴投' (按鈕)，就不顯示在表格中
+        if r.result in ['防守失誤', '暴投']:
+            continue
+            
         pitcher = Player.query.get(r.pitcher_id) if r.pitcher_id else None
         defense_records.append({
             "inning": r.inning,
@@ -651,12 +652,26 @@ def export_game_excel(game_id):
     team_scores_per_inning = [0] * max_inning
     opponent_scores_per_inning = [0] * max_inning
     for i in range(1, max_inning+1):
-        team_scores_per_inning[i-1] = sum(
-            ab.rbis or 0 for ab in AtBatStat.query.filter_by(game_id=game_id, inning=i).all()
+        # 本隊打點
+        rbi_runs = sum(
+            ab.rbis or 0
+            for ab in AtBatStat.query.filter_by(game_id=game_id, inning=i).all()
         )
+
+        # 對手失誤造成的額外得分（從 DefenseStat result='對手失誤' 抓）
+        error_extra_runs = sum(
+            ds.runs or 0
+            for ds in DefenseStat.query.filter_by(game_id=game_id, inning=i, result='對手失誤').all()
+        )
+
+        team_scores_per_inning[i-1] = rbi_runs + error_extra_runs
+
+        # 對方每局得分仍然是所有 DefenseStat.runs
         opponent_scores_per_inning[i-1] = sum(
-            ds.runs or 0 for ds in DefenseStat.query.filter_by(game_id=game_id, inning=i).all()
+            ds.runs or 0
+            for ds in DefenseStat.query.filter_by(game_id=game_id, inning=i).all()
         )
+
     team_hits = sum(
         ab.result in ['內安','一安','二安','三安','全壘'] for ab in AtBatStat.query.filter_by(game_id=game_id).all()
     )
@@ -854,5 +869,5 @@ def finish_record(game_id):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True)        
-#    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+#    app.run(debug=True)        
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
