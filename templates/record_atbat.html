@@ -42,7 +42,9 @@
             <option value="觸身">觸身</option>
             <option value="內滾">內滾</option>
             <option value="內飛">內飛</option>
+            <option value="界飛">界飛</option>
             <option value="犧牲">犧牲</option>
+            <option value="犧飛">犧飛</option>
             <option value="外飛">外飛</option>
             <option value="雙殺">雙殺</option>
             <option value="內安">內安</option>
@@ -78,6 +80,23 @@
         style="padding:12px 32px; font-size:1.1em; border-radius:7px; background:#726bff; color:white; border:none; font-weight:600;">
         跑者出局
       </button>
+    </div>
+    <div style="display: flex; gap: 32px; margin-top:12px;">
+    <button type="button"
+        onclick="document.getElementById('real_result').value = '對手失誤'; document.getElementById('atbat_form').submit();"
+        style="padding:12px 32px; font-size:1.1em; border-radius:7px; background:#eb9846; color:white; border:none; font-weight:600;">
+        對手失誤
+    </button>
+    <button type="button"
+        onclick="document.getElementById('real_result').value = '暴投'; document.getElementById('atbat_form').submit();"
+        style="padding:12px 32px; font-size:1.1em; border-radius:7px; background:#ee6225; color:white; border:none; font-weight:600;">
+        暴投
+    </button>
+    </div>
+    <div style="text-align:center; margin-top:18px;">
+        <label style="font-weight:600; color:#dc3545;">本次失分：</label>
+        <input type="number" name="runs" min="0" value="0" style="width:72px; font-size:1.15em; text-align:center; margin-left:7px;">
+        <span style="color:#888; font-size:0.98em;">（失誤、暴投時可補充記分，或打擊以外的得分）</span>
     </div>
   </div>
 </form>

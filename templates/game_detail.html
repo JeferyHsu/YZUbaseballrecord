@@ -27,6 +27,7 @@
         <th>H</th>
         <th>E</th>
     </tr>
+    {% if game.first_attack == 'A' %}
     <tr>
         <td style="font-weight:bold;">元智大學</td>
         {% for s in team_scores_per_inning %}
@@ -45,6 +46,26 @@
         <td>{{ opponent_hits }}</td>
         <td>{{ opponent_errors }}</td>
     </tr>
+    {% else %}
+    <tr>
+        <td style="font-weight:bold;">{{ game.opponent }}</td>
+        {% for s in opponent_scores_per_inning %}
+            <td>{{ s }}</td>
+        {% endfor %}
+        <td>{{ game.opponent_score }}</td>
+        <td>{{ opponent_hits }}</td>
+        <td>{{ opponent_errors }}</td>
+    </tr>
+    <tr>
+        <td style="font-weight:bold;">元智大學</td>
+        {% for s in team_scores_per_inning %}
+            <td>{{ s }}</td>
+        {% endfor %}
+        <td>{{ game.team_score }}</td>
+        <td>{{ team_hits }}</td>
+        <td>{{ team_errors }}</td>
+    </tr>
+    {% endif %}
 </table>
 
 <hr>

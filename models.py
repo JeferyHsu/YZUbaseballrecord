@@ -38,7 +38,7 @@ class AtBatStat(db.Model):
     rbis = db.Column(db.Integer, default=0)
     position = db.Column(db.String(20))
     note = db.Column(db.String(50))
-
+    
 class DefenseStat(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     game_id = db.Column(db.Integer, db.ForeignKey('game.id'))

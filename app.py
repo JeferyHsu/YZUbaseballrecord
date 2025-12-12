@@ -6,13 +6,13 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
 
 app = Flask(__name__)
-#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///baseball.db'
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///baseball.db'
+#app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'test_secret_key'
 db.init_app(app)
 
-OUT_RESULTS = {'三振': 1, '不死三振': 0, '雙殺': 2, '外飛': 1, '內滾': 1, '內飛': 1, '犧牲': 1}
+OUT_RESULTS = {'三振': 1, '不死三振': 0, '雙殺': 2, '外飛': 1, '內滾': 1, '內飛': 1, '犧牲': 1, '犧飛': 1, '界飛': 1}
 
 def calculate_outs(game_id, inning, source='atbat'):
     if source == 'atbat':
@@ -27,7 +27,10 @@ def calculate_outs(game_id, inning, source='atbat'):
     return outs
 
 def calculate_pitcher_stats(game_id):
-    stats = DefenseStat.query.filter_by(game_id=game_id).all()
+    stats = [
+        ds for ds in DefenseStat.query.filter_by(game_id=game_id).all()
+        if ds.pitcher_id is not None
+    ]
     pitcher_groups = {}
     for rec in stats:
         pid = rec.pitcher_id
@@ -52,7 +55,7 @@ def calculate_pitcher_stats(game_id):
         pitcher_groups[pid]['strikes'] += rec.strike
         pitcher_groups[pid]['run'] += rec.runs
         # 判斷出局
-        if rec.result in ['三振', '內滾', '外飛', '雙殺', '內飛', '犧牲']:
+        if rec.result in ['三振', '內滾', '外飛', '雙殺', '內飛', '犧牲', '犧飛', '界飛']:
             pitcher_groups[pid]['innings_outs'] += (2 if rec.result == '雙殺' else 1)
         if rec.result == 'RUNNER_OUT':
             pitcher_groups[pid]['innings_outs'] += 1
@@ -208,13 +211,39 @@ def record_atbat(game_id, order, inning):
 
     inning = int(inning)
     current_batter = batting_orders[order]
-    result_types = ['三振', '不死三振', '四壞', '觸身', '內安', '一安', '二安', '三安', '全壘', '失誤', '雙殺', '犧牲', '外飛', '內滾', '內飛', 'RUNNER_OUT']
+    result_types = ['三振', '不死三振', '四壞', '觸身', '內安', '一安', '二安', '三安', '全壘', '失誤', '雙殺', '犧牲', '犧飛', '界飛', '外飛', '內滾', '內飛', 'RUNNER_OUT']
     outs = calculate_outs(game_id, inning)
     if request.method == 'POST':
         selected_result = request.form['result']
         rbis = int(request.form.get('rbis', 0))
         position = request.form.get('position', '')
         note = request.form.get('note', '')
+
+        if selected_result == '對手失誤':
+            runs = int(request.form.get('runs', 0))
+            game.team_score = (game.team_score or 0) + runs
+            # 新增一筆 DefenseStat，代表本局的'失誤'
+            defense_stat = DefenseStat(
+                game_id=game_id,
+                inning=inning,
+                pitcher_id=None,         # 可設 None 或 0，因為不是針對某個你方投手
+                batter_name='',
+                strike=0,
+                ball=0,
+                pitch_count=0,
+                result='失誤',
+                runs=0                   # 這裡記失誤，但不在這筆加分數
+            )
+            db.session.add(defense_stat)
+            db.session.commit()
+            return redirect(url_for('record_atbat', game_id=game_id, order=order, inning=inning))
+
+        if selected_result == '暴投':
+            runs = int(request.form.get('runs', 0))
+            game.team_score = (game.team_score or 0) + runs
+            db.session.commit()
+            return redirect(url_for('record_atbat', game_id=game_id, order=order, inning=inning))
+        
         atbat = AtBatStat(
             game_id=game_id,
             player_id=current_batter.player_id,
@@ -252,6 +281,7 @@ def record_atbat(game_id, order, inning):
         return redirect(url_for('record_atbat', game_id=game_id, order=next_order, inning=inning))
     return render_template('record_atbat.html',
         batter=current_batter.player,
+        gmae=game,
         order=order,
         inning=inning,
         is_top=(game.first_attack == 'A'),
@@ -283,24 +313,60 @@ def record_defense(game_id, inning):
         ball = int(request.form['ball'])
         pitch_count = int(request.form['pitch_count'])
         result = request.form['result']
-        runs = int(request.form.get('runs', 0))
 
-        stat = DefenseStat(
-            game_id=game_id, inning=inning,
-            pitcher_id=curr_pitcher_id, batter_name=batter_name,
-            strike=strike, ball=ball,
-            pitch_count=pitch_count, result=result,
-            runs=runs
-        )
-        db.session.add(stat)
+        # 打席本身的失分（例如安打回來幾分）
+        base_runs = int(request.form.get('runs', 0))
+        # 額外因為暴投／失誤等造成的得分（err_runs 是一般 text/number input，都會被讀進來）
+        extra_runs_str = request.form.get('err_runs', '0')  # 可能是空字串或文字
+        try:
+            extra_runs = int(extra_runs_str)
+        except ValueError:
+            extra_runs = 0  # 如果輸入不是數字，就當 0 處理
 
-        # 更新對手分數
+        runs = base_runs + extra_runs
+
+        # 先依結果建立 DefenseStat / AtBat
+        if result == '自己失誤':
+            # 防守失誤紀錄（有投手）
+            stat = DefenseStat(
+                game_id=game_id, inning=inning,
+                pitcher_id=curr_pitcher_id, batter_name=batter_name,
+                strike=strike, ball=ball,
+                pitch_count=pitch_count, result='失誤',
+                runs=runs
+            )
+            db.session.add(stat)
+
+            # 一筆 AtBatStat 只用來標記「防守失誤」，不參與任何打擊統計
+            atbat = AtBatStat(
+                game_id=game_id,
+                player_id=None,
+                order=-1,
+                result='失誤',
+                inning=inning,
+                rbis=0,
+                position='',
+                note='防守失誤'
+            )
+            db.session.add(atbat)
+        else:
+            # 其他結果：照原本方式記 DefenseStat
+            stat = DefenseStat(
+                game_id=game_id, inning=inning,
+                pitcher_id=curr_pitcher_id, batter_name=batter_name,
+                strike=strike, ball=ball,
+                pitch_count=pitch_count, result=result,
+                runs=runs
+            )
+            db.session.add(stat)
+
+        # 統一在這裡更新對手分數（包含自己失誤、暴投等所有情況）
         game.opponent_score = (game.opponent_score or 0) + runs
         game.current_pitcher_id = curr_pitcher_id
         db.session.commit()
         last_batter_name = batter_name
 
-        # 計算outs時包含跑者出局 'RUNNER_OUT'
+        # 計算 outs
         records = DefenseStat.query.filter_by(game_id=game_id, inning=inning).all()
         outs = sum(OUT_RESULTS.get(r.result, 0) for r in records)
         outs += sum(1 for r in records if r.result == 'RUNNER_OUT')
@@ -309,17 +375,18 @@ def record_defense(game_id, inning):
         if result == 'RUNNER_OUT':
             return redirect(url_for('record_defense', game_id=game_id, inning=inning, pitcher_id=curr_pitcher_id))
 
-        # 三出局跳轉，確保只有POST時觸發
+        # 三出局跳轉
         if outs >= 3:
             if game.first_attack == 'A':
-                return redirect(url_for('record_atbat', game_id=game_id, order=game.next_batter_order or 0, inning=inning+1, pitcher_id=curr_pitcher_id))
+                return redirect(url_for('record_atbat', game_id=game_id, order=game.next_batter_order or 0,
+                                        inning=inning+1, pitcher_id=curr_pitcher_id))
             else:
-                return redirect(url_for('record_atbat', game_id=game_id, order=game.next_batter_order or 0, inning=inning, pitcher_id=curr_pitcher_id))
+                return redirect(url_for('record_atbat', game_id=game_id, order=game.next_batter_order or 0,
+                                        inning=inning, pitcher_id=curr_pitcher_id))
 
-        # 其他情況續留防守頁面
         return redirect(url_for('record_defense', game_id=game_id, inning=inning, pitcher_id=curr_pitcher_id))
-    
-    # GET請求 - 計算各種投手用球數等現有邏輯，不變
+
+    # ===== GET: 原本那段維持不變 =====
     pitcher_pitch_count = 0
     if curr_pitcher_id:
         pitcher_pitch_count = sum(
@@ -356,18 +423,17 @@ def record_defense(game_id, inning):
     curr_pitcher = Player.query.get(curr_pitcher_id) if curr_pitcher_id else None
 
     return render_template('record_defense.html',
-        game=game,
-        game_id=game_id, inning=inning,
-        pitchers=pitchers, curr_pitcher_id=curr_pitcher_id,curr_pitcher=curr_pitcher,
-        last_batter_name=last_batter_name,
-        inning_records=inning_records,
-        is_top=(game.first_attack == 'D'),
-        pitcher_pitch_count=pitcher_pitch_count,
-        curr_pitcher_inning_pitch_count=curr_pitcher_inning_pitch_count,
-        total_pitch_this_inning=total_pitch_this_inning,
-        total_pitch_all=total_pitch_all,
-        outs=outs
-    )
+                           game=game,
+                           game_id=game_id, inning=inning,
+                           pitchers=pitchers, curr_pitcher_id=curr_pitcher_id, curr_pitcher=curr_pitcher,
+                           last_batter_name=last_batter_name,
+                           inning_records=inning_records,
+                           is_top=(game.first_attack == 'D'),
+                           pitcher_pitch_count=pitcher_pitch_count,
+                           curr_pitcher_inning_pitch_count=curr_pitcher_inning_pitch_count,
+                           total_pitch_this_inning=total_pitch_this_inning,
+                           total_pitch_all=total_pitch_all,
+                           outs=outs)
 
 @app.route('/choose_starting_pitcher/<int:game_id>', methods=['GET', 'POST'])
 def choose_starting_pitcher(game_id):
@@ -437,7 +503,8 @@ def switch_pitcher(game_id, inning):
     return render_template('switch_pitcher.html', pitchers=pitchers, game_id=game_id, inning=inning)
 
 def get_stats_table(game_id):
-    atbats = AtBatStat.query.filter_by(game_id=game_id).all()
+    atbats = [ab for ab in AtBatStat.query.filter_by(game_id=game_id).all() 
+        if not (ab.order == -1 and ab.note == '防守失誤')]
     innings = sorted(set([a.inning for a in atbats]))
     max_inning = max(innings) if innings else 9
     groups = {}
@@ -457,7 +524,7 @@ def get_stats_table(game_id):
             }
         idx = ab.inning - 1
         groups[key]["results"][idx] += ("/" if groups[key]["results"][idx] else "") + (ab.result or "")
-        if ab.result not in ['四壞', '觸身', '犧牲']:
+        if ab.result not in ['四壞', '觸身', '犧牲','犧飛']:
             groups[key]["ab"] += 1
             total['ab'] += 1
         if ab.result in ['內安', '一安', '二安', '三安', '全壘']:
@@ -486,9 +553,16 @@ def game_detail(game_id):
 
     for i in range(1, max_inning+1):
         # 本隊RBIs
-        team_scores_per_inning[i-1] = sum(
+        rbi_runs = sum(
             ab.rbis or 0 for ab in AtBatStat.query.filter_by(game_id=game_id, inning=i).all()
         )
+        # 對手失誤造成的額外得分（record_atbat 裡 selected_result == '對手失誤' 時填的 runs）
+        error_extra_runs = sum(
+            int(ab.note) if ab.note and ab.result == '對手失誤' else 0
+            for ab in AtBatStat.query.filter_by(game_id=game_id, inning=i).all()
+        )
+        team_scores_per_inning[i-1] = rbi_runs + error_extra_runs
+
         # 對手在這局得分
         opponent_scores_per_inning[i-1] = sum(
             ds.runs or 0 for ds in DefenseStat.query.filter_by(game_id=game_id, inning=i).all()
@@ -500,13 +574,26 @@ def game_detail(game_id):
     opponent_hits = sum(
         ds.result in ['內安','一安','二安','三安','全壘'] for ds in DefenseStat.query.filter_by(game_id=game_id).all()
     )
+    # 我方失誤：敵方打擊時「自己失誤」留下的 DefenseStat (pitcher_id有值) + AtBatStat note='防守失誤'
     team_errors = sum(
-        ab.result == '失誤' for ab in AtBatStat.query.filter_by(game_id=game_id).all()
+        1
+        for ds in DefenseStat.query.filter_by(game_id=game_id, result='失誤').all()
+        if ds.pitcher_id is not None
     )
-    opponent_errors = sum(
-        ds.result == '失誤' for ds in DefenseStat.query.filter_by(game_id=game_id).all()
+    opponent_errors = (
+        sum(
+            1
+            for ab in AtBatStat.query.filter_by(game_id=game_id).all()
+            if ab.result == '失誤' and (ab.note is None or ab.note != '防守失誤')
+        )
+        +
+        sum(
+            1
+            for ds in DefenseStat.query.filter_by(game_id=game_id, result='失誤').all()
+            if ds.pitcher_id is None
+        )
     )
-    
+
     defense_records = []
     for r in defense_stats:
         pitcher = Player.query.get(r.pitcher_id) if r.pitcher_id else None
@@ -577,10 +664,16 @@ def export_game_excel(game_id):
         ds.result in ['內安','一安','二安','三安','全壘'] for ds in DefenseStat.query.filter_by(game_id=game_id).all()
     )
     team_errors = sum(
-        ab.result == '失誤' for ab in AtBatStat.query.filter_by(game_id=game_id).all()
+        ds.result == '失誤'
+        for ds in DefenseStat.query.filter_by(game_id=game_id).all()
     )
-    opponent_errors = sum(
-        ds.result == '失誤' for ds in DefenseStat.query.filter_by(game_id=game_id).all()
+    opponent_errors = (sum(
+        ab.result == '失誤' and (ab.order is not None and ab.order != -1) and (ab.note is None or ab.note != '防守失誤')
+        for ab in AtBatStat.query.filter_by(game_id=game_id).all()
+    ) - sum(
+        ds.result == '失誤'
+        for ds in DefenseStat.query.filter_by(game_id=game_id).all()
+    )
     )
     
     defense_records = []
@@ -761,5 +854,5 @@ def finish_record(game_id):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-#    app.run(debug=True)        
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(debug=True)        
+#    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

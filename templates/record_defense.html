@@ -44,7 +44,9 @@ onsubmit="document.getElementById('real_result').value = document.querySelector(
             <option value="觸身">觸身</option>
             <option value="內滾">內滾</option>
             <option value="內飛">內飛</option>
+            <option value="界飛">界飛</option>
             <option value="犧牲">犧牲</option>
+            <option value="犧飛">犧飛</option>
             <option value="外飛">外飛</option>
             <option value="雙殺">雙殺</option>
             <option value="內安">內安</option>
@@ -61,7 +63,7 @@ onsubmit="document.getElementById('real_result').value = document.querySelector(
       <td>
         <div class="input-group">
           <button type="button" onclick="changeInput('strike',-1)">-</button>
-          <input id="strike" name="strike" type="number" min="0" max="3" value="0" required>
+          <input id="strike" name="strike" type="number" min="0" value="0" required>
           <button type="button" onclick="changeInput('strike',1)">+</button>
         </div>
       </td>
@@ -97,26 +99,57 @@ onsubmit="document.getElementById('real_result').value = document.querySelector(
   <br>
     <!-- 按鈕群組區塊（整體置中） -->
     <div style="display: flex; flex-direction: column; align-items: center; gap: 18px; margin-top:40px;">
-        <!-- 上方兩顆並排 -->
         <div style="display: flex; gap: 32px;">
-            <button type="submit"
-            style="padding:12px 32px; font-size:1.1em; border-radius:7px; background:#726bff; color:white; border:none; font-weight:600;">
+        <button type="submit"
+            style="width:180px; height:56px; margin-bottom:16px;
+            font-size:1.25em; font-weight:600; border:none; border-radius:12px;
+            background:#726bff; color:white; box-shadow:0 2px 8px #e0e0ff61;">
             確定送出
         </button>
         <button type="button"
             onclick="document.getElementById('real_result').value = 'RUNNER_OUT'; document.getElementById('defense_form').submit();"
-            style="padding:12px 32px; font-size:1.1em; border-radius:7px; background:#726bff; color:white; border:none; font-weight:600;">
+            style="width:180px; height:56px; margin-bottom:16px;
+            font-size:1.25em; font-weight:600; border:none; border-radius:12px;
+            background:#726bff; color:white; box-shadow:0 2px 8px #e0e0ff61;">
             跑者出局
         </button>
+        </div>
+        <div style="display: flex; gap: 32px; margin-top:12px;">
+        <button type="button"
+            onclick="document.getElementById('real_result').value = '自己失誤'; document.getElementById('defense_form').submit();"
+            style="width:180px; height:56px; margin-bottom:16px;
+            font-size:1.25em; font-weight:600; border:none; border-radius:12px;
+            background:#eba863; color:white; box-shadow:0 2px 8px #ffdba761;">
+            自己失誤
+        </button>
+        <button type="button"
+            onclick="document.getElementById('real_result').value = '暴投'; document.getElementById('defense_form').submit();"
+            style="width:180px; height:56px; margin-bottom:16px;
+            font-size:1.25em; font-weight:600; border:none; border-radius:12px;
+            background:#f06f42; color:white; box-shadow:0 2px 8px #ffdba761;">
+            暴投
+        </button>
+        </div>
+
+    <div style="text-align:center; margin-top:18px;">
+    <label style="font-weight:600; color:#dc3545; font-size:1.08em; margin-right:8px;">
+        本次失分
+    </label>
+    <input type="number" id="err_runs" name="err_runs" min="0" value="0"
+        style="width:64px; font-size:1.18em; text-align:center; border-radius:8px; border:1.2px solid #ccc; margin-left:2px;">
+    </div>
+    <div style="text-align:center; color: #8a8a8a; font-size:0.98em; margin-top:2px;">
+    (例如暴投或失誤造成的得分)
     </div>
 </form>
-
 <!-- 換投手（單獨一行一顆） -->
 <form action="{{ url_for('switch_pitcher', game_id=game_id, inning=inning) }}" method="get" style="margin:0;">
+    <div style="display: flex; gap: 32px; margin-top:12px;">
     <button type="submit"
     style="padding:12px 32px; font-size:1.1em; border-radius:7px; background:#726bff; color:white; border:none; font-weight:600;">
     換投手
     </button>
+    </div>
 </form>
 </div>
 
